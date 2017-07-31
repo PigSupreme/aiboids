@@ -5,21 +5,29 @@ Actual states should be instances of the State class; its documentation shows
 how to define the necessary state logic methods. We provide STATE_NONE as a
 simple example; this can also be used for an concrete initial state.
 
-The object `agent` can be given state machine functionality as follows:
+The object `agent` can be given state machine functionality as follows::
 
->>> fsm = StateMachine(agent)  # which also sets agent.statemachine = fsm
->>> # Use optional keywords cur, glo, pre to set states above, or ...
->>> fsm.set_state(current)     # with optional kewords glo and pre.
->>> # ...
->>> agent.statemachine.update()  # to execute the current state logic.
->>> # ...
->>> agent.statemachine.handle_msg(msg) # to send msg via the statemachine
+    fsm = StateMachine(agent, cur=cur_state, glo=glo_state, pre=pre_state)
+
+The keyword arguments are option. This als sets `agent.statemachine` = fsm
+for later convenience. Alternatively, use Statemachine.set_state() later.
+
+Once the state machine is initiliazed, state logic and messaging are done with
+the respective functions::
+    
+    agent.statemachine.update()
+    agent.statemachine.handle_msg(message)
+    
+One can, of course, call these methods directly from the StateMachine instance.
 """
 
 from __future__ import print_function
 
 class State(object):
-    """Provides the necessary framework for UML state logic (with events).
+    """Provides the necessary framework for UML states with trigger events.
+
+    Args:
+        name (string): The name of this state; see note below.
 
     Instances of this class are initiated with a set of default hooks for the
     state machine logic: on_enter, on_execute, on_exit, and on_msg.
@@ -29,19 +37,24 @@ class State(object):
     parameter: the agent using this State's logic. The on_msg method needs an
     additional second positional parameter to hold the incoming message.
 
-    After calling statename = State(), the function decorator @statename.event
-    is define to easily replace the default hook methods above. For example:
+    After calling statename = State(...), the decorator @statename.event is
+    available to easily replace the default hook methods above. For example::
 
-    >>> STATE_NONE = State()
-    >>> @STATE_NONE.event
-    >>> def on_enter(agent):
-    >>>     print("WARNING: Agent %s entered STATE_NONE" % agent)
+        STATE_NONE = State('STATE_NONE')
+        @STATE_NONE.event
+        def on_enter(agent):
+            print("WARNING: Agent %s entered STATE_NONE" % agent)
 
-    will set STATE_NONE.on_enter to the newly-defined function. Future plans
-    are to use the decorator syntax to generate automatic state documentation,
-    but we're not quite there yet.
+    This will set STATE_NONE.on_enter to the newly-defined function, and
+    automatically print some documentation; see the output of sample_run().
+    When overriding multiple hooks for the same state, the decorator must
+    appear before each new function definition.
+
+    Note:
+        For future compatibility, instantiate each state as a CONSTANT_VALUE
+        with a name that matches, as in the example.
     """
-    def __init__(self, name="SomeState"):
+    def __init__(self, name):
         self.on_enter = State.on_dummy
         self.on_execute = State.on_dummy
         self.on_exit = State.on_dummy
@@ -52,9 +65,11 @@ class State(object):
     @classmethod
     # For keeping track of defined states
     def register_state(cls, state, statename):
+        # TODO: Called internally whenever a new State() is instantiated.
+        # TODO: In the future, we'll use this...somehow.
         if not hasattr(cls, 'statedir'):
             cls.statedir = {}
-        cls.statedir[state] = statename
+        cls.statedir[statename] = state
 
     # Dummy placeholder for on{enter/execute/exit} methods.
     @staticmethod
@@ -67,24 +82,29 @@ class State(object):
         return False
 
     def event(self, eventhook):
+        # This defines the @state.event decorator as described above.
         if eventhook.__name__ in ('on_enter','on_execute','on_exit','on_msg'):
             setattr(self, eventhook.__name__, eventhook)
-            # Note how we can grab the docstring from the decorated function!
+            # Note how we can grab the docstring using the decorator!
             if eventhook.__doc__:
-                print(str(self.name) +"." + eventhook.__name__ +" : "+ eventhook.__doc__)
+                print("%s.%s() docstring:" % (str(self.name), eventhook.__name__))
+                print(" %s\n" % eventhook.__doc__)
                 # TODO: We can change the docstring, but need to figure out how autodocs can find it.
-                setattr(eventhook, "__doc__", "GOAT!")
+                # setattr(eventhook, "__doc__", "GOAT!")
+            # This return value ensures that an Exception is raised if we try
+            # to use the decorated function from outside of the given State.
+            # TODO: Instead of print()ing, store for later in a class variable/method? 
             return None
         else:
             raise ValueError('State event %s not recognized' % eventhook.__name__)
 
 ################ A very simple State #####################
 #: Used as a default null state by the StateMachine class.
-STATE_NONE = State()
+STATE_NONE = State('STATE_NONE')
 
 @STATE_NONE.event
 def on_enter(agent):
-    """The decorator will find this docstring!"""
+    """Dummy docstring for discovery by @state.event decorator."""
     print("WARNING: Agent %s entered STATE_NONE" % agent)
 ##########################################################
 
@@ -92,22 +112,22 @@ class StateMachine(object):
     """UML-Style State Machine with event/messaging capability.
 
     Args:
-        owner (BaseEntity): The entity that will use this StateMachine.
+        agent (object): The agent that will use this StateMachine.
 
     Keyword Args:
         cur (State): Sets the current state.
         glo (State): Sets the global state.
         pre (State): Sets the previous state.
 
-    Instantiating this class will automatically set owner.statemachine to the
+    Instantiating this class will automatically set agent.statemachine to the
     new instance. Omitting any of the keyword arguments will set their
     corresponding states to None; these can also be assigned/changed later
     using StateMachine.set_state().
     """
 
-    def __init__(self, owner, **kwargs):
-        self.owner = owner
-        owner.statemachine = self
+    def __init__(self, agent, **kwargs):
+        self.agent = agent
+        agent.statemachine = self
         for stype in ('cur', 'glo', 'pre'):
             if stype in kwargs:
                 setattr(self, stype+'_state', kwargs[stype])
@@ -121,7 +141,7 @@ class StateMachine(object):
             return self.cur_state.name
 
     def set_state(self, *args, **kwargs):
-        """Manually set owner's states without triggering state change logic.
+        """Manually set agent's states without triggering state change logic.
 
         This method is primarily meant for initialization of the StateMachine.
         If called with a single parameter, we assume this to be the desired
@@ -140,20 +160,27 @@ class StateMachine(object):
             self.pre_state = kwargs['pre']
 
     def start(self):
-        """Start the FSM by executing global & current state's enter() methods."""
+        """Call on_enter() for global, then current state."""
         if self.glo_state:
-            self.glo_state.on_enter(self.owner)
+            self.glo_state.on_enter(self.agent)
         if self.cur_state:
-            self.cur_state.on_enter(self.owner)
+            self.cur_state.on_enter(self.agent)
 
     def update(self):
-        """Execute the owner's global state (if any), then current state."""
+        """Call on_execute() for global, then current state."""
         # First execute a global state if it exists
         if self.glo_state:
-            self.glo_state.on_execute(self.owner)
+            self.glo_state.on_execute(self.agent)
         # Now execute the current state (which should exist, but check anyway)
         if self.cur_state:
-            self.cur_state.on_execute(self.owner)
+            self.cur_state.on_execute(self.agent)
+
+    def shutdown(self):
+        """Call on_exit() for global, then current state."""
+        if self.glo_state:
+            self.glo_state.on_exit(self.agent)
+        if self.cur_state:
+            self.cur_state.on_exit(self.agent)
 
     def change_state(self, newstate):
         """Switches to a new state, calling appropriate exit/enter methods.
@@ -163,21 +190,21 @@ class StateMachine(object):
 
         Assuming the current and newstates are both valid, this does:
 
-        * Call the exit method of the current state.
+        * Call on_exit() of the current state.
 
         * Change to the newstate.
 
-        * Call the enter method of the newstate.
+        * Call on_enter() of the newstate.
 
         """
         if self.cur_state and newstate:
             self.pre_state = self.cur_state
-            self.cur_state.on_exit(self.owner)
+            self.cur_state.on_exit(self.agent)
             self.cur_state = newstate
-            self.cur_state.on_enter(self.owner)
+            self.cur_state.on_enter(self.agent)
 
     def revert_state(self):
-        """Reverts owner to its previous state, if one exists."""
+        """Reverts agent to its previous state, if one exists."""
         if self.pre_state:
             self.change_state(self.pre_state)
 
@@ -196,44 +223,64 @@ class StateMachine(object):
             the current or global state; False otherwise.
         """
         # First let the current state try to handle this message...
-        if self.cur_state and self.cur_state.on_msg(self.owner, message):
+        if self.cur_state and self.cur_state.on_msg(self.agent, message):
             return True
         # ...but if handling was not done, send to the global state.
-        if self.glo_state and self.glo_state.on_msg(self.owner, message):
+        if self.glo_state and self.glo_state.on_msg(self.agent, message):
             return True
         else:
             return False
 
 def sample_run():
-    """Demo using the classic turnstile two-state FSM."""
-    class Turnstile():
-        pass
+    """Demo based on the classic two-state turnstile FSM."""
+    class Turnstile(object):
+        """A virtual turnstile with counter."""
 
-    turnstile_locked = State('STATE_LOCKED')
+        def __init__(self):
+            self.counter = 0
 
-    @turnstile_locked.event
+### TURNSTILE_LOCKED State Logic ####################################
+    TURNSTILE_LOCKED = State('TURNSTILE_LOCKED')
+    @TURNSTILE_LOCKED.event
     def on_msg(agent, message):
-        """COIN: Change state to unlocked. PUSH: Print denial message."""
+        """Acts on the following messages:
+        * 'COIN': Change state to TURNSTILE_UNLOCKED.
+        * 'PUSH': Access denied; print some text.
+        """
         if message == 'COIN':
-            print('Coin received, unlocking!')
-            agent.statemachine.change_state(turnstile_unlocked)
+            print('Coin inserted!')
+            agent.statemachine.change_state(TURNSTILE_UNLOCKED)
         if message == 'PUSH':
             print('Denied!')
+#####################################################################
 
-    turnstile_unlocked = State('STATE_UNLOCKED')
-    @turnstile_unlocked.event
+### TURNSTILE_UNLOCKED State Logic ##################################
+    TURNSTILE_UNLOCKED = State('TURNSTILE_UNLOCKED')
+    @TURNSTILE_UNLOCKED.event
     def on_msg(agent, message):
+        """Acts on the following messages:
+        * 'PUSH': Change state to TURNSTILE_LOCKED.
+        """
         if message == 'PUSH':
             print('There it goes!')
-            agent.statemachine.change_state(turnstile_locked)
+            agent.statemachine.change_state(TURNSTILE_LOCKED)
+    @TURNSTILE_UNLOCKED.event
+    def on_exit(agent):
+        """Increment turnstile counter.
+        """
+        # Not the best place for this, but an excuse to demo on_exit().
+        agent.counter += 1
+#####################################################################
 
+    # Initialize the Turnstile object and state machine
     thing = Turnstile()
     fsm = StateMachine(thing)
-    fsm.set_state(turnstile_locked, glo=STATE_NONE)
-
+    fsm.set_state(TURNSTILE_LOCKED, glo=STATE_NONE)
     fsm.start()
+
+    # Main loop
     for i in range(1,20):
-        print('\nUpdate %d: Starting state is %s' % (i,thing.statemachine.statename))
+        print('\nUpdate %d:' % i)
         if i%5 == 0:
             print('Inserting coin...')
             fsm.handle_msg('COIN')
@@ -242,43 +289,9 @@ def sample_run():
             print('Trying to push...')
             fsm.handle_msg('PUSH')
         fsm.update()
+
+    # Print final stats
+    print("Final passthrough count: %d" % thing.counter)
 
 if __name__ == "__main__":
-    #sample_run()
-    """Demo using the classic turnstile two-state FSM."""
-    class Turnstile():
-        pass
-
-    turnstile_locked = State('STATE_LOCKED')
-
-    @turnstile_locked.event
-    def on_msg(agent, message):
-        """COIN: Change state to unlocked. PUSH: Print denial message."""
-        if message == 'COIN':
-            print('Coin received, unlocking!')
-            agent.statemachine.change_state(turnstile_unlocked)
-        if message == 'PUSH':
-            print('Denied!')
-
-    turnstile_unlocked = State('STATE_UNLOCKED')
-    @turnstile_unlocked.event
-    def on_msg(agent, message):
-        if message == 'PUSH':
-            print('There it goes!')
-            agent.statemachine.change_state(turnstile_locked)
-
-    thing = Turnstile()
-    fsm = StateMachine(thing)
-    fsm.set_state(turnstile_locked, glo=STATE_NONE)
-
-    fsm.start()
-    for i in range(1,20):
-        print('\nUpdate %d: Starting state is %s' % (i,thing.statemachine.statename))
-        if i%5 == 0:
-            print('Inserting coin...')
-            fsm.handle_msg('COIN')
-
-        if i%3 == 0:
-            print('Trying to push...')
-            fsm.handle_msg('PUSH')
-        fsm.update()
+    sample_run()

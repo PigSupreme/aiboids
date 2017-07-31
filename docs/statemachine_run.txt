@@ -1,0 +1,76 @@
+STATE_NONE.on_enter() docstring:
+ Dummy docstring for discovery by @state.event decorator.
+
+TURNSTILE_LOCKED.on_msg() docstring:
+ Acts on the following messages:
+        * 'COIN': Change state to TURNSTILE_UNLOCKED.
+        * 'PUSH': Access denied; print some text.
+        
+
+TURNSTILE_UNLOCKED.on_msg() docstring:
+ Acts on the following messages:
+        * 'PUSH': Change state to TURNSTILE_LOCKED.
+        
+
+TURNSTILE_UNLOCKED.on_exit() docstring:
+ Increment turnstile counter.
+        
+
+WARNING: Agent <__main__.Turnstile object at 0x7fbce9f6c910> entered STATE_NONE
+
+Update 1:
+
+Update 2:
+
+Update 3:
+Trying to push...
+Denied!
+
+Update 4:
+
+Update 5:
+Inserting coin...
+Coin inserted!
+
+Update 6:
+Trying to push...
+There it goes!
+
+Update 7:
+
+Update 8:
+
+Update 9:
+Trying to push...
+Denied!
+
+Update 10:
+Inserting coin...
+Coin inserted!
+
+Update 11:
+
+Update 12:
+Trying to push...
+There it goes!
+
+Update 13:
+
+Update 14:
+
+Update 15:
+Inserting coin...
+Coin inserted!
+Trying to push...
+There it goes!
+
+Update 16:
+
+Update 17:
+
+Update 18:
+Trying to push...
+Denied!
+
+Update 19:
+Final passthrough count: 3
