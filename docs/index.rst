@@ -7,4 +7,5 @@ AiBoids Python
    :caption: Table of Contents:
    
    intro
-   statemachine
+   Generic Vector Code <vpoints>
+   Genertic State Machine Code <statemachine>
