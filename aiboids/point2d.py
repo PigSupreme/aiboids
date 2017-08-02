@@ -124,17 +124,36 @@ class Point2d(object):
         return Point2d(self.nt[0] - term.nt[0], self.nt[1] - term.nt[1])
 
     def __mul__(self, term):
-        """Dot product; overrides the \* operator.
+        """Dot product: vector*vector.
 
         >>> Point2d(1,-2)*Point2d(3,5)           # As a binary operator
         -7.0
         >>> vdot(Point2d(1,-2), Point2d(3,5))    # As a function of two vectors.
         -7.0
+        >>> Point2d(1,2)*3
+        Traceback (most recent call last):
+        TypeError: Mutiplication of Point2d and <type 'int'> is undefined.
         """
-        return (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
+        if isinstance(term, Point2d):
+            return (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
+        else:
+            raise TypeError('Mutiplication of Point2d and %s is undefined.' % type(term))
+
+    def __rmul__(self, scalar):
+        """Scalar multiplication: scalar*vector.
+
+        >>> print(3*Point2d(1,2))
+        Point2d: <3.000000000, 6.000000000>
+        >>> print(-2*Point2d(-1,3))
+        Point2d: <2.000000000, -6.000000000>
+        """
+        return Point2d(scalar*self.nt[0], scalar*self.nt[1])
 
     def scm(self, scalar):
         """Scalar multiplication by this vector.
+        
+        Warning:
+            Future deprecation is likely, use s*v instead of v.scm(s).
 
         >>> a = Point2d(1,-2)
         >>> print(a.scm(3.5))
