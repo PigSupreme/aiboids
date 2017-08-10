@@ -3,8 +3,8 @@
 
 Game Entities
 -------------
-* BOB: Miner Bob, Elsa's husband
-* ELSA: Wife Elsa, scourge of wandering goats
+* MINER_BOB: Miner Bob, Elsa's husband
+* WIFE_ELSA: Wife Elsa, scourge of wandering goats
 * BILLY: The goat
 
 Locations
@@ -22,11 +22,14 @@ Message Types
 * STEW_READY: Elsa sends this when she's finished cooking.
 """
 
-from enum import IntEnum, Enum
+from enum import Enum
 
-# Enumerated game entities, must start at 1
-# We must use IntEnum here for compatibility with BaseEntity
-Characters = IntEnum('Characters', 'BOB ELSA BILLY')
+CharTypes = Enum('CharTypes', 'Miner Wife Goat')
+
+# Enumeration of characters
+Characters = {'MINER_BOB' : CharTypes.Miner,
+              'WIFE_ELSA' : CharTypes.Wife,
+              'BILLY' : CharTypes.Goat}
 
 # Enumeration of locations
 Locations = Enum('Locations', 'SHACK MINE BANK SALOON YARD FIELDS')

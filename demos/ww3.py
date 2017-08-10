@@ -1,15 +1,12 @@
 #!/usr/bin/env python
 """
-This is the main exectuable for the westworld2 demo.
+This is the main exectuable for the westworld3 demo.
 """
 
 # for python3 compat
 from __future__ import unicode_literals
 from __future__ import absolute_import
 from __future__ import print_function
-
-#from fsm_ex.gamedata import Characters, Locations, MsgTypes
-#from fsm_ex.gamedata import GameOver
 
 import logging
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
@@ -23,7 +20,7 @@ from gamedata import GameOver
 # TODO: Automate this so that we can just import something from gamedata.py?
 from ent_miner import Miner
 from ent_wife import Wife
-#from fsm_ex.ent_goat import Goat
+#from ent_goat import Goat
 
 
 ##############################################################################
@@ -37,7 +34,7 @@ if __name__ == "__main__":
     # Create and register entities
     BOB = Miner('MINER_BOB')
     ELSA = Wife('WIFE_ELSA')
-    #BILLY = Goat('BILLY_GOAT') 
+    #BILLY = Goat('BILLY_GOAT')
 
     # Start FSM logic: Must be done AFTER all entities are registered.
     BOB.statemachine.start()

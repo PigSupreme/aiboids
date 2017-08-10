@@ -15,7 +15,7 @@ sys.path.append('..')
 from aiboids.base_entity import BaseEntity
 from aiboids.statemachine import StateMachine, State
 
-from gamedata import Characters, Locations, MsgTypes, GameOver
+from gamedata import Locations, MsgTypes, GameOver
 
 
 ### GLOBAL_MINER State Logic ########################################

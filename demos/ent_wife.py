@@ -14,7 +14,7 @@ sys.path.append('..')
 from aiboids.base_entity import BaseEntity
 from aiboids.statemachine import StateMachine, State
 
-from gamedata import Characters, Locations, MsgTypes, GameOver
+from gamedata import Locations, MsgTypes, GameOver
 
 ### GLOBAL_WIFE State Logic #########################################
 WIFE_GLOBAL = State('WIFE_GLOBAL')
@@ -39,7 +39,6 @@ def on_enter(agent):
 def on_execute(agent):
     # If not in the YARD, random chance of goat appearing
     if (agent.location != Locations.YARD) and (randint(1,3) == 1):
-        return
         agent.statemachine.change_state(CHASE_GOAT)
 
 @WIFE_GLOBAL.event
@@ -70,7 +69,7 @@ DO_HOUSEWORK = State('DO_HOUSEWORK')
 def on_enter(agent):
     # Housework is done at the SHACK only.
     if agent.location != Locations.SHACK:
-        print("Headin' on home...")
+        print("%s : Headin' on home..." % agent.name)
         agent.change_location(Locations.SHACK)
     print("%s : Housework ain't gonna do itself!" % agent.name)
 
@@ -140,8 +139,9 @@ def on_enter(agent):
 def on_execute(agent):
     print("%s : Eatin' the stew...I outdone myself this time." % agent.name)
     agent.statemachine.change_state(DO_HOUSEWORK)
-#
-#class ChaseGoat(State):
+
+CHASE_GOAT = State('CHASE_GOAT')
+### CHASE_GOAT State Logic #########################################
 #    """Head to the yard and shoo that goat!
 #
 #    Goats are stubborn critters, so there's a random chance that Elsa fails
@@ -156,26 +156,28 @@ def on_execute(agent):
 #
 #    * Successfully shoos the goat -> revert to previous
 #    """
-#    def enter(self,agent):
-#        # If not already in the yard, move there and chase that goat!
-#        if agent.location != Locations.YARD:
-#            print("%s : Thar's a goat in mah yard!" % agent.name)
-#            agent.change_location(Locations.YARD)
-#
-#    def execute(self, agent):
-#        print("%s : Shoo, ya silly goat!" % agent.name)
-#        # Random chance the goat will listen. Goats are stubborn
-#        if randint(0,2):
-#            print("--FakeGoat : *Nom nom flowers*")
-#        else:
-#            print("--FakeGoat : *Scampers away*")
-#            agent.fsm.revert_state()
-#
-#    def on_msg(self,agent,message):
-#        #Busy chasing the goat, so forward messages to future self.
-#        delay, send_id, rec_id, msg_type, extra = message
-#        agent.postoffice.post_msg(1, send_id, rec_id, msg_type, extra)
-#        return True
+@CHASE_GOAT.event
+def on_enter(agent):
+    # If not already in the yard, move there and chase that goat!
+    if agent.location != Locations.YARD:
+        print("%s : Thar's a goat in mah yard!" % agent.name)
+        agent.change_location(Locations.YARD)
+
+@CHASE_GOAT.event
+def on_execute(agent):
+    print("%s : Shoo, ya silly goat!" % agent.name)
+    # Random chance the goat will listen. Goats are stubborn
+    if randint(0,2):
+        print("--FakeGoat-- : *Nom nom flowers*")
+    else:
+        print("--FakeGoat-- : *Scampers away*")
+        agent.statemachine.revert_state()
+
+@CHASE_GOAT.event
+def on_msg(agent, message):
+    #Busy chasing the goat, so forward messages to future self.
+    agent.send_msg(agent.me_id, message.MSG_TYPE, extra=message.EXTRA, delay=1)
+    return True
 
 class Wife(BaseEntity):
     """Wife Elsa, scourge of the goats.
@@ -204,7 +206,7 @@ class Wife(BaseEntity):
         """Just updates the StateMachine logic."""
         self.statemachine.update()
 
-    def receive_msg(self,message):
+    def receive_msg(self, message):
         # Let the FSM handle any messages
         self.statemachine.handle_msg(message)
 
