@@ -15,23 +15,19 @@ sys.path.append('..')
 from aiboids.base_entity import BaseEntity
 from aiboids.statemachine import StateMachine, State
 
-#from fsm_ex.state_machine import State, STATE_NONE, StateMachine
-#from fsm_ex.gamedata import Characters, Locations, MsgTypes
-#from fsm_ex.gamedata import GameOver
-from enum import IntEnum, Enum
+from gamedata import Characters, Locations, MsgTypes, GameOver
 
-# Enumerated game entities, must start at 1
-# We must use IntEnum here for compatibility with BaseEntity
-Characters = IntEnum('Characters', 'BOB ELSA BILLY')
-
-# Enumeration of locations
-Locations = Enum('Locations', 'SHACK MINE BANK SALOON YARD FIELDS')
-
-# Enumeration of message types
-MsgTypes = Enum('MsgTypes', 'MINER_HOME STEW_READY')
 
 ### GLOBAL_MINER State Logic ########################################
 MINER_GLOBAL = State('MINER_GLOBAL')
+@MINER_GLOBAL.event
+def on_enter(agent):
+    agent.spouse = BaseEntity.by_id(agent.spouse_id)
+    try:
+        print("%s : Spouse is %s" % (agent.name, agent.spouse.idstr))
+    except AttributeError:
+        print("%s : Looks like I'm single!" % agent.name)
+
 @MINER_GLOBAL.event
 def on_execute(agent):
     """Global miner state; increases thirst, unless we're at the SALOON."""
@@ -169,7 +165,7 @@ def on_enter(agent):
     if agent.location != Locations.SHACK:
         print("%s : Day's a finished, headin' on home!" % agent.name)
         agent.change_location(Locations.SHACK)
-        #agent.postoffice.post_msg(0,agent.get_id(), agent.spouse, MsgTypes.MINER_HOME)
+        agent.send_msg(agent.spouse_id, 'MsgTypes.MINER_HOME')
 
 @REST_AT_HOME.event
 def on_execute(agent):
@@ -182,14 +178,18 @@ def on_execute(agent):
         agent.statemachine.change_state(DIG_IN_MINE)
 
 @REST_AT_HOME.event
-def on_msg(self,agent,message):
+def on_msg(agent, message):
     # If stew's ready, wake up and eat
-    if message.MSG_TYPE == MsgTypes.STEW_READY and agent.location == Locations.SHACK:
-        print("%s : I hears ya', lil' lady..." % agent.name)
-        agent.fsm.change_state(EAT_STEW)
-        return True
+    if message.MSG_TYPE == MsgTypes.STEW_READY:
+        if message.SEND_ID == agent.spouse_id and agent.location == Locations.SHACK:
+            print("%s : I hears ya', lil' lady..." % agent.name)
+            agent.statemachine.change_state(EAT_STEW)
+            return True
 
-#class MinerEatStew(State):
+    return False
+
+### EAT_STEW State Logic ##########################################
+EAT_STEW = State('EAT_STEW')
 #    """Eat that tasty stew, and thank yer lovely wife!
 #
 #    Food removes fatigue, of course.
@@ -198,18 +198,21 @@ def on_msg(self,agent,message):
 #
 #    * After a single execute() to eat stew -> revert to previous
 #    """
-#    def enter(self,agent):
-#        if agent.location != Locations.SHACK:
-#            print("%s : Better git home fer dinner..." % agent.name)
-#            agent.change_location(Locations.SHACK)
-#
-#    def execute(self,agent):
-#        print("%s : That's some might fine stew...thank ya much, Elsa!" % agent.name)
-#        agent.remove_fatigue(4)
-#        agent.fsm.revert_state()
-#
-#    def leave(self,agent):
-#        print("%s : Now where was I...?" % agent.name)
+@EAT_STEW.event
+def on_enter(agent):
+    if agent.location != Locations.SHACK:
+        print("%s : Better git home fer dinner..." % agent.name)
+        agent.change_location(Locations.SHACK)
+
+@EAT_STEW.event
+def on_execute(agent):
+    print("%s : That's some might fine stew...thank ya much, Elsa!" % agent.name)
+    agent.remove_fatigue(5)
+    agent.statemachine.revert_state()
+
+@EAT_STEW.event
+def on_exit(agent):
+    print("%s : Now where was I...?" % agent.name)
 
 class Miner(BaseEntity):
     """Miner Bob.
@@ -225,13 +228,13 @@ class Miner(BaseEntity):
         self.location = Locations.SHACK
         self.gold = 0
         self.bank = 0
+        self.work_goal = 10
         self.thirst = 0
         self.fatigue = 0
 
         # For later identification, if we add additional Wives/Miners
-        self.me = 'MINER'
-        #self.me = Characters.BOB
-        #self.spouse = Characters.ELSA
+        self.me_id = 'MINER_BOB'
+        self.spouse_id = 'WIFE_ELSA'
 
         # Set up the FSM for this entity
         StateMachine(self, cur=DIG_IN_MINE, glo=MINER_GLOBAL)
@@ -289,17 +292,9 @@ class Miner(BaseEntity):
             self.thirst = 0
 
     def work_done(self):
-        """Returns True if more than 10 gold in the bank.
-
-        Note
-        ----
-        Fix this! Once there is 10 gold or more in the bank, the Miner
-        will go home after each bank deposit. We don't want that.
-        """
-        return (self.bank >= 10)
-
-
-if __name__ == "__main__":
-    bob = Miner('MINER_BOB')
-    while 1:
-        bob.update()
+        """Check if we're done working for the day."""
+        if self.bank >= self.work_goal:
+            self.work_goal += 10
+            return True
+        else:
+            return False
