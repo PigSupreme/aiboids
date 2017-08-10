@@ -13,32 +13,28 @@ logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
 
 import sys
 sys.path.append('..')
+from importlib import import_module
 from aiboids.base_entity import BaseEntity, DummyClock, PostOffice
-
-from gamedata import GameOver
-
-# TODO: Automate this so that we can just import something from gamedata.py?
-from ent_miner import Miner
-from ent_wife import Wife
-#from ent_goat import Goat
-
+from gamedata import Characters, GameOver
 
 ##############################################################################
 
 if __name__ == "__main__":
-
     # Initialize Manager-type objects:
     MASTER_CLOCK = DummyClock()
     POST_OFFICE = PostOffice(MASTER_CLOCK)
 
     # Create and register entities
-    BOB = Miner('MINER_BOB')
-    ELSA = Wife('WIFE_ELSA')
-    #BILLY = Goat('BILLY_GOAT')
+    ENTITY_LIST = []
+    for (ent_name, sourcefile) in Characters.items():
+        source_mod = import_module(sourcefile)
+        cls = getattr(source_mod, source_mod.ENTITY_CLASS)
+        entity = cls(ent_name)
+        ENTITY_LIST.append(entity)
 
     # Start FSM logic: Must be done AFTER all entities are registered.
-    BOB.statemachine.start()
-    ELSA.statemachine.start()
+    for entity in ENTITY_LIST:
+        entity.statemachine.start()
 
     # Main Loop
     while 1:

@@ -5,7 +5,7 @@ Game Entities
 -------------
 * MINER_BOB: Miner Bob, Elsa's husband
 * WIFE_ELSA: Wife Elsa, scourge of wandering goats
-* BILLY: The goat
+* BILLY: The goat (not yet implemented)
 
 Locations
 ---------
@@ -24,12 +24,9 @@ Message Types
 
 from enum import Enum
 
-CharTypes = Enum('CharTypes', 'Miner Wife Goat')
-
-# Enumeration of characters
-Characters = {'MINER_BOB' : CharTypes.Miner,
-              'WIFE_ELSA' : CharTypes.Wife,
-              'BILLY' : CharTypes.Goat}
+# Enumeration of characters {name: sourcefile}
+Characters = {'MINER_BOB' : 'ent_miner',
+              'WIFE_ELSA' : 'ent_wife'}
 
 # Enumeration of locations
 Locations = Enum('Locations', 'SHACK MINE BANK SALOON YARD FIELDS')

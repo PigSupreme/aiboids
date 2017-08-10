@@ -7,14 +7,14 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import sys
+sys.path.append('..')
 
 from random import randint
 
-sys.path.append('..')
 from aiboids.base_entity import BaseEntity
 from aiboids.statemachine import StateMachine, State
 
-from gamedata import Locations, MsgTypes, GameOver
+from gamedata import Locations, MsgTypes
 
 ### GLOBAL_WIFE State Logic #########################################
 WIFE_GLOBAL = State('WIFE_GLOBAL')
@@ -38,7 +38,7 @@ def on_enter(agent):
 @WIFE_GLOBAL.event
 def on_execute(agent):
     # If not in the YARD, random chance of goat appearing
-    if (agent.location != Locations.YARD) and (randint(1,3) == 1):
+    if (agent.location != Locations.YARD) and (randint(1, 3) == 1):
         agent.statemachine.change_state(CHASE_GOAT)
 
 @WIFE_GLOBAL.event
@@ -76,7 +76,7 @@ def on_enter(agent):
 @DO_HOUSEWORK.event
 def on_execute(agent):
     # ...and she sings while doing the housework, obviously.
-    if randint(0,2):
+    if randint(0, 2):
         print("%s : Workin' round the house...tra-la-lah-la-lah..." % agent.name)
 
 ### COOK_STEW State Logic #########################################
@@ -102,7 +102,7 @@ def on_enter(agent):
     if agent.spouse.location == Locations.SHACK:
         print("%s : Gonna rustle up some mighty fine stew!" % agent.name)
         # Post a message to future self to signal stew is done.
-        stew_time = randint(3,5)
+        stew_time = randint(3, 5)
         agent.send_msg(agent.me_id, MsgTypes.STEW_READY, delay=stew_time)
     else:
         print('%s : That dang goat! I done missed mah hubby!' % agent.name)
@@ -167,7 +167,7 @@ def on_enter(agent):
 def on_execute(agent):
     print("%s : Shoo, ya silly goat!" % agent.name)
     # Random chance the goat will listen. Goats are stubborn
-    if randint(0,2):
+    if randint(0, 2):
         print("--FakeGoat-- : *Nom nom flowers*")
     else:
         print("--FakeGoat-- : *Scampers away*")
@@ -179,6 +179,7 @@ def on_msg(agent, message):
     agent.send_msg(agent.me_id, message.MSG_TYPE, extra=message.EXTRA, delay=1)
     return True
 
+ENTITY_CLASS = 'Wife'
 class Wife(BaseEntity):
     """Wife Elsa, scourge of the goats.
 
@@ -207,10 +208,10 @@ class Wife(BaseEntity):
         self.statemachine.update()
 
     def receive_msg(self, message):
-        # Let the FSM handle any messages
+        """Let the statemachine handle any messages."""
         self.statemachine.handle_msg(message)
 
-    def change_location(self,newlocation):
+    def change_location(self, newlocation):
         """Instantaneously teleport to a new location.
 
         Parameters

@@ -17,7 +17,6 @@ from aiboids.statemachine import StateMachine, State
 
 from gamedata import Locations, MsgTypes, GameOver
 
-
 ### GLOBAL_MINER State Logic ########################################
 MINER_GLOBAL = State('MINER_GLOBAL')
 @MINER_GLOBAL.event
@@ -49,7 +48,7 @@ def on_execute(agent):
     agent.add_fatigue(1)
 
     # Dig for gold
-    gfound = randint(0,2)
+    gfound = randint(0, 2)
     chatter = [
         "Keep on a-diggin'...",
         "Found me a gold nugget!",
@@ -95,10 +94,10 @@ def on_execute(agent):
     """Deposit all the gold being carried."""
     deposit = agent.gold
     if deposit > 0:
-        print("%s : Now depositin' %d gold..." % (agent.name,deposit))
+        print("%s : Now depositin' %d gold..." % (agent.name, deposit))
         agent.change_gold(-deposit)
         agent.bank += deposit
-        print("%s : Saved myself %d gold...soon'll be rich!" % (agent.name,agent.bank))
+        print("%s : Saved myself %d gold...soon'll be rich!" % (agent.name, agent.bank))
         if agent.bank > 25:
             print("%s : Whee, doggy! A winner is y'all!" % agent.name)
             raise GameOver
@@ -214,6 +213,7 @@ def on_execute(agent):
 def on_exit(agent):
     print("%s : Now where was I...?" % agent.name)
 
+ENTITY_CLASS = 'Miner'
 class Miner(BaseEntity):
     """Miner Bob.
 
@@ -243,11 +243,11 @@ class Miner(BaseEntity):
         """Just updates the StateMachine logic."""
         self.statemachine.update()
 
-    def receive_msg(self,message):
+    def receive_msg(self, message):
         # Let the FSM handle any messages
         self.statemachine.handle_msg(message)
 
-    def change_location(self,newlocation):
+    def change_location(self, newlocation):
         """Instantaneously teleport to a new location.
 
         Parameters
@@ -257,7 +257,7 @@ class Miner(BaseEntity):
         """
         self.location = newlocation
 
-    def change_gold(self,amount):
+    def change_gold(self, amount):
         """Add/subtract the amount of gold currently carried
 
         Parameters
@@ -269,13 +269,13 @@ class Miner(BaseEntity):
 
     def pockets_full(self):
         """Queries whether this entity is carrying enough gold."""
-        return (self.gold >= 3)
+        return self.gold >= 3
 
-    def add_fatigue(self,amount=1):
+    def add_fatigue(self, amount=1):
         """Increases the current fatigue of this entity."""
         self.fatigue += amount
 
-    def remove_fatigue(self,amount=1):
+    def remove_fatigue(self, amount=1):
         """Remove fatigue from this entity, but not below zero."""
         self.fatigue -= amount
         if self.fatigue < 0:
@@ -283,9 +283,9 @@ class Miner(BaseEntity):
 
     def is_thirsty(self):
         """Queries if this entity has too much current thirst."""
-        return (self.thirst > 7)
+        return self.thirst > 7
 
-    def remove_thirst(self,amount):
+    def remove_thirst(self, amount):
         """Remove thirst from this entity, but not below zero."""
         self.thirst -= amount
         if self.thirst < 0:
