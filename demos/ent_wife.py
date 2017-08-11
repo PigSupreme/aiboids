@@ -27,8 +27,7 @@ WIFE_GLOBAL = State('WIFE_GLOBAL')
 #    """
 @WIFE_GLOBAL.event
 def on_enter(agent):
-    """Find that hubby o' mine!"""
-
+    """Check that my spouse is in the game world."""
     agent.spouse = BaseEntity.by_id(agent.spouse_id)
     try:
         print("%s : Spouse is %s" % (agent.name, agent.spouse.idstr))
@@ -37,14 +36,25 @@ def on_enter(agent):
 
 @WIFE_GLOBAL.event
 def on_execute(agent):
-    # If not in the YARD, random chance of goat appearing
+    """If I'm not in the YARD, 1 in 3 chance of a goat appearing.
+
+    StateChange:
+        Goat appears -> CHASE_GOAT
+
+    TODO: Once we have an actual Goat, move state change logic to a more
+    appropriate place (probably on_msg).
+    """
     if (agent.location != Locations.YARD) and (randint(1, 3) == 1):
         agent.statemachine.change_state(CHASE_GOAT)
 
 @WIFE_GLOBAL.event
 def on_msg(agent, message):
-    if message.MSG_TYPE == 'MsgTypes.MINER_HOME':
-        # Ignore message if it's not from my spouse
+    """If my spouse gets home, start cooking stew.
+
+    Messages:
+        * MINER_HOME: If from my spouse, change state -> COOK_STEW
+    """
+    if message.MSG_TYPE == MsgTypes.MINER_HOME:
         if message.SEND_ID == agent.spouse_id:
             agent.statemachine.change_state(COOK_STEW)
             return True
@@ -55,19 +65,12 @@ def on_msg(agent, message):
 DO_HOUSEWORK = State('DO_HOUSEWORK')
 #    """Old West misogyny, yeehaw!
 #
-#    Note
-#    ----
-#
 #    Elsa is apparently a lot tougher than her husband, since she never gets
-#    tired or thirsty! We should probably give her some more interesting things
-#    to do...a good exercise in FSM design/coding!
-#
-#    This state has no transitions; those are handled by GlobalWifeState.
+#    tired or thirsty!
 #    """
-
 @DO_HOUSEWORK.event
 def on_enter(agent):
-    # Housework is done at the SHACK only.
+    """Housework is done at the SHACK only; make sure I'm there."""
     if agent.location != Locations.SHACK:
         print("%s : Headin' on home..." % agent.name)
         agent.change_location(Locations.SHACK)
@@ -75,7 +78,7 @@ def on_enter(agent):
 
 @DO_HOUSEWORK.event
 def on_execute(agent):
-    # ...and she sings while doing the housework, obviously.
+    """"...and sing while doing the housework, obviously."""
     if randint(0, 2):
         print("%s : Workin' round the house...tra-la-lah-la-lah..." % agent.name)
 
@@ -96,26 +99,46 @@ COOK_STEW = State('COOK_STEW')
 #    """
 @COOK_STEW.event
 def on_enter(agent):
+    """Go home and start cooking, if my spouse is still there."""
     if agent.location != Locations.SHACK:
         print("%s : Heading back to the kitchen..." % agent.name)
-    # Check if my spouse is home before I start cooking.
+    # Now check if my spouse is home before I start cooking.
     if agent.spouse.location == Locations.SHACK:
         print("%s : Gonna rustle up some mighty fine stew!" % agent.name)
         # Post a message to future self to signal stew is done.
         stew_time = randint(3, 5)
         agent.send_msg(agent.me_id, MsgTypes.STEW_READY, delay=stew_time)
+        agent.stew_is_on = True
     else:
         print('%s : That dang goat! I done missed mah hubby!' % agent.name)
+        agent.stew_is_on = False
 
 @COOK_STEW.event
 def on_execute(agent):
-    print("%s : Wrassalin' with dinner..." % agent.name)
+    """Keep an eye on the stew, if it's still cooking.
+
+    StateChange:
+        stew_is_on == False -> revert state
+
+    It's possible that Elsa got distracted somehow, and the stew was never
+    started. If this happens, just go back to the previous state.
+    """
+    if agent.stew_is_on:
+        print("%s : Wrassalin' with dinner..." % agent.name)
+    else:
+        agent.statemachine.revert_state()
 
 @COOK_STEW.event
 def on_msg(agent, message):
+    """Listen for STEW_READY and notify my spouse.
+
+    Messages:
+        * STEW_READY: change state -> EAT_STEW
+    """
     if message.MSG_TYPE == MsgTypes.STEW_READY:
         print("%s : Stew's ready, come an' git it!" % agent.name)
         agent.send_msg(agent.spouse_id, MsgTypes.STEW_READY)
+        agent.stew_is_on = False
         agent.statemachine.change_state(EAT_STEW)
         return True
     else:
@@ -123,20 +146,20 @@ def on_msg(agent, message):
 
 ### EAT_STEW State Logic #########################################
 EAT_STEW = State('EAT_STEW')
-#    """Eat that tasty stew!
-#
-#    State Transitions:
-#
-#    * After one execute() to eat stew -> DoHouseWork
-#    """
 @EAT_STEW.event
 def on_enter(agent):
+    """Make sure I'm actually at home."""
     if agent.location != Locations.SHACK:
         print("%s : Headin' to the dinner table..." % agent.name)
         agent.change_location(Locations.SHACK)
 
 @EAT_STEW.event
 def on_execute(agent):
+    """Eat and then go back to housework.
+
+    StateChange:
+        * update(1) -> DO_HOUSEWORK
+    """
     print("%s : Eatin' the stew...I outdone myself this time." % agent.name)
     agent.statemachine.change_state(DO_HOUSEWORK)
 
@@ -151,20 +174,23 @@ CHASE_GOAT = State('CHASE_GOAT')
 #    message received by this state will be forwarded to Elsa in the next
 #    update() cycle. This means that if Bob comes home whilst Elsa's chasing a
 #    goat, she'll still receive the MINER_HOME message when she's done.
-#
-#    State Transitions:
-#
-#    * Successfully shoos the goat -> revert to previous
 #    """
 @CHASE_GOAT.event
 def on_enter(agent):
-    # If not already in the yard, move there and chase that goat!
+    """If not already in the YARD, move there to chase that goat!"""
     if agent.location != Locations.YARD:
         print("%s : Thar's a goat in mah yard!" % agent.name)
         agent.change_location(Locations.YARD)
 
 @CHASE_GOAT.event
 def on_execute(agent):
+    """Attempt to shoo the goat.
+
+    StateChange:
+        Goat shooed -> revert state
+
+    TODO: There's no actual Goat; we just fake it with Elsa's code for now.
+    """
     print("%s : Shoo, ya silly goat!" % agent.name)
     # Random chance the goat will listen. Goats are stubborn
     if randint(0, 2):
@@ -175,7 +201,7 @@ def on_execute(agent):
 
 @CHASE_GOAT.event
 def on_msg(agent, message):
-    #Busy chasing the goat, so forward messages to future self.
+    """Busy chasing the goat, so forward all messages to future self."""
     agent.send_msg(agent.me_id, message.MSG_TYPE, extra=message.EXTRA, delay=1)
     return True
 
@@ -183,13 +209,17 @@ ENTITY_CLASS = 'Wife'
 class Wife(BaseEntity):
     """Wife Elsa, scourge of the goats.
 
-    Note: The constructor doesn't take any actual args, but this syntax is
-    needed to call the __init__ method of the superclass. I'm not sure that
-    we need to do so here, but it will be a useful reminder for later.
+    Args:
+        entity_idstr (String): The id string used by BaseEntity.
+
+    Since there's only one Wife, everything except the BaseEntity idstr
+    is hard-coded. We assume this entity is WIFE_ELSA, and her spouse is
+    MINER_BOB.
     """
 
+
     def __init__(self, *args):
-        # Calls BaseEntity.__init__ to set-up basic functionality.
+
         super(Wife, self).__init__(*args)
 
         # Entities need a name and initial location
@@ -200,7 +230,7 @@ class Wife(BaseEntity):
         self.me_id = 'WIFE_ELSA'
         self.spouse_id = 'MINER_BOB'
 
-        # Set up the FSM for this entity
+        # Set up the StateMachine for this entity
         StateMachine(self, cur=DO_HOUSEWORK, glo=WIFE_GLOBAL)
 
     def update(self):
@@ -214,9 +244,7 @@ class Wife(BaseEntity):
     def change_location(self, newlocation):
         """Instantaneously teleport to a new location.
 
-        Parameters
-        ----------
-        newlocation: LOCATION_CONSTANT
-            Enumerated location, imported from gamedata.py
+        Args:
+            newlocation (Locations): Must match import from gamedata.py.
         """
         self.location = newlocation
