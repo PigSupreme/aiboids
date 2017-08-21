@@ -7,6 +7,9 @@ the regular dot product; vdot(a,b) is also available. Scalar multiplication is
 done functionally, using `a.scm(k)` for the scalar k and vector a.
 
 Many other operations are available; see below for details.
+
+TODO: Better Exception handling for the various arithmetic operators; see the
+code for __mul__ (dot product) for an example of what we should be doing.
 """
 
 # for python3 compat
@@ -126,32 +129,43 @@ class Point2d(object):
     def __mul__(self, term):
         """Dot product: vector*vector.
 
-        >>> Point2d(1,-2)*Point2d(3,5)           # As a binary operator
+        Examples below show the avaiable types of vector/scalar multiplcation.
+
+        >>> a = Point2d(1,-2)
+        >>> b = Point2d(3,5)
+        >>> a*b         # Dot product as a binary operator
         -7.0
-        >>> vdot(Point2d(1,-2), Point2d(3,5))    # As a function of two vectors.
+        >>> vdot(a,b)   # Dot product as a function of two vectors
         -7.0
-        >>> Point2d(1,2)*3
+        >>> print(3*a)  # Scalar multiplication, note the order
+        Point2d: <3.000000000, -6.000000000>
+        >>> a*3         # Vector*Scalar is undefined in this order
         Traceback (most recent call last):
         TypeError: Mutiplication of Point2d and <type 'int'> is undefined.
+        >>> a *= a      # To avoid later confusion, this raises a TypeError.
+        Traceback (most recent call last):
+        TypeError: Compound assignment for dot product is not supported.
         """
-        if isinstance(term, Point2d):
+        try:
             return (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
-        else:
+        except AttributeError:
             raise TypeError('Mutiplication of Point2d and %s is undefined.' % type(term))
 
     def __rmul__(self, scalar):
-        """Scalar multiplication: scalar*vector.
-
-        >>> print(3*Point2d(1,2))
-        Point2d: <3.000000000, 6.000000000>
-        >>> print(-2*Point2d(-1,3))
-        Point2d: <2.000000000, -6.000000000>
-        """
+        """Scalar multiplication: scalar*vector; see examples above."""
         return Point2d(scalar*self.nt[0], scalar*self.nt[1])
+
+    def __imul__(self, term):
+        """Compound assignment is not supported for the dot product.
+
+        Raises:
+            TypeError
+        """
+        raise TypeError('Compound assignment for dot product is not supported.')
 
     def scm(self, scalar):
         """Scalar multiplication by this vector.
-        
+
         Warning:
             Future deprecation is likely, use s*v instead of v.scm(s).
 
@@ -318,11 +332,13 @@ class Point2d(object):
         Returns:
             float: The length of the orthogonal projection.
 
+        Returns the scalar q such that self = q*u + r, where u is a unit
+        vector (normalized direction) and r is orthogonal to u. This is
+        algebraically identical to exact division (/). If you want the result
+        as a vector, use Point2d.proj(direction) or compund assignment.
+
         Note:
-            Returns the scalar q such that self = q*v2 + v3, where v2 is in the
-            span of direction  and v2 is orthogonal to v3. This is algebraically
-            identical to exact division (/). If you want the result as a vector,
-            use Point2d.proj(direction) instead.
+            Compound assignment /= behaves differently; see below.
 
         >>> a = Point2d(2,2)
         >>> b = Point2d(3,0)
@@ -330,15 +346,38 @@ class Point2d(object):
         2.0
         >>> b/a
         2.1213203435596424
-        >>> # Compound assignment /= is not recommended!
-        >>> a=Point2d(1,2)
-        >>> a/=a
-        >>> a
-        2.23606797749979
         """
         # Note: * is the dot product, using __mul__ to override above.
         r = (self*direction)/direction.norm()
         return r
+
+    def __itruediv__(self, direction):
+        """In-place orthogonal projection; overrides the /= operator.
+
+        Args:
+            direction (Point2d): The vector we project onto.
+
+        Replaces this vector by the unique vector v satisfying all of the
+        following: (1) self = v + w, (2) v is parallel to direction, (3) w is
+        orthogonal to v.
+
+        Note:
+            Non-compound division / behaves differently; see above.
+
+        >>> a = Point2d(2,4)
+        >>> b = Point2d(3,-2)
+        >>> dotp = a*b
+        >>> a /= b
+        >>> print(a)
+        Point2d: <-0.461538462, 0.307692308>
+        >>> print(b)
+        Point2d: <3.000000000, -2.000000000>
+        >>> a*b == dotp  # Dot product is preserved by orthogonal projection.
+        True
+        """
+        r = (self*direction)/direction.sqnorm()
+        proj = direction.scm(r)
+        return proj
 
     def proj(self, direction):
         """Get the orthogonal projection of this vector onto another.
@@ -347,11 +386,12 @@ class Point2d(object):
             direction (Point2d): The vector we project onto.
 
         Returns:
-            Point2d: The unique vector v2 such that self = q*v2 + v3, where v2
-            is a multiple of direction  and v2 is orthogonal to v3.
+            Point2d: The unique vector v such that self = v + w, where v is
+            parallel to direction and w is orthogonal to v.
 
         Note:
             If you want both v2 and v3, use Point2d.resolve(direction) instead.
+            See divison / and compound divivion =/ above for other options.
 
         >>> a = Point2d(2,4)
         >>> b = Point2d(3,-2)
@@ -360,7 +400,6 @@ class Point2d(object):
         >>> print(b.proj(a))
         Point2d: <-0.200000000, -0.400000000>
         """
-        # Note: * is the dot product, using __mul__ to override above.
         r = (self*direction)/direction.sqnorm()
         proj = direction.scm(r)
         return proj
@@ -372,8 +411,8 @@ class Point2d(object):
             direction (Point2d): The vector we project onto.
 
         Returns:
-            Point2d, Point2d: v2, v3 such that self = q*v2 + v3, where v2 is a
-            multiple of direction and v2 is orthogonal to v3.
+            Point2d, Point2d: The unique vectors v, w such that self = v + w,
+            where v is parallel to direction and w is orthogonal to v.
 
         >>> a = Point2d(2,-3)
         >>> b = Point2d(1,4)
@@ -393,6 +432,11 @@ class Point2d(object):
 
         >>> print(Point2d(1,-2).left_normal())
         Point2d: <2.000000000, 1.000000000>
+        >>> print(Point2d(0,0).left_normal())
+        Point2d: <-0.000000000, 0.000000000>
+
+        Note:
+            If applied to the zero vector, returns a zero vector (see example).
         """
         return Point2d(-self.nt[1], self.nt[0])
 
