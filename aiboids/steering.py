@@ -51,21 +51,21 @@ import logging
 
 # Default constants for the various steering behaviours
 # TODO: Look at westworld examples for automatic imports
-from steering_constants import STEERING_DEFAULTS
-FLEE_PANIC_SQ = STEERING_DEFAULTS['FLEE_PANIC_SQ']
-ARRIVE_DECEL_TWEAK = STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
-EVADE_PANIC_SQ = STEERING_DEFAULTS['EVADE_PANIC_SQ']
-TAKECOVER_STALK_T = STEERING_DEFAULTS['TAKECOVER_STALK_T']
-WALLAVOID_WHISKER_SCALE = STEERING_DEFAULTS['WALLAVOID_WHISKER_SCALE']
-FOLLOW_ARRIVE_HESITANCE = STEERING_DEFAULTS['FOLLOW_ARRIVE_HESITANCE']
-AVOID_MIN_LENGTH = STEERING_DEFAULTS['AVOID_MIN_LENGTH']
-AVOID_BRAKE_WEIGHT = STEERING_DEFAULTS['AVOID_BRAKE_WEIGHT']
-WAYPOINT_TOLERANCE_SQ = STEERING_DEFAULTS['WAYPOINT_TOLERANCE_SQ']
-PATH_EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
-PATHRESUME_DECAY = STEERING_DEFAULTS['PATHRESUME_DECAY']
-FLOCKING_COHESHION_HESITANCE = STEERING_DEFAULTS['FLOCKING_COHESHION_HESITANCE']
-FLOCKING_RADIUS_MULTIPLIER = STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']
-FLOCKING_SEPARATE_SCALE = STEERING_DEFAULTS['FLOCKING_SEPARATE_SCALE']
+#from steering_constants import STEERING_DEFAULTS
+#FLEE_PANIC_SQ = STEERING_DEFAULTS['FLEE_PANIC_SQ']
+#ARRIVE_DECEL_TWEAK = STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
+#EVADE_PANIC_SQ = STEERING_DEFAULTS['EVADE_PANIC_SQ']
+#TAKECOVER_STALK_T = STEERING_DEFAULTS['TAKECOVER_STALK_T']
+#WALLAVOID_WHISKER_SCALE = STEERING_DEFAULTS['WALLAVOID_WHISKER_SCALE']
+#FOLLOW_ARRIVE_HESITANCE = STEERING_DEFAULTS['FOLLOW_ARRIVE_HESITANCE']
+#AVOID_MIN_LENGTH = STEERING_DEFAULTS['AVOID_MIN_LENGTH']
+#AVOID_BRAKE_WEIGHT = STEERING_DEFAULTS['AVOID_BRAKE_WEIGHT']
+#WAYPOINT_TOLERANCE_SQ = STEERING_DEFAULTS['WAYPOINT_TOLERANCE_SQ']
+#PATH_EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
+#PATHRESUME_DECAY = STEERING_DEFAULTS['PATHRESUME_DECAY']
+#FLOCKING_COHESHION_HESITANCE = STEERING_DEFAULTS['FLOCKING_COHESHION_HESITANCE']
+#FLOCKING_RADIUS_MULTIPLIER = STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']
+#FLOCKING_SEPARATE_SCALE = STEERING_DEFAULTS['FLOCKING_SEPARATE_SCALE']
 
 # Math Constants (for readability)
 INF = float('inf')
@@ -86,51 +86,111 @@ rand_uni = lambda x: rand_gen.uniform(-x, x)
 class SteeringBehaviour(object):
     def __init__(self, owner):
         """Base class for all steering behaviours.
-        
+
         Args:
             owner (vehicle): Compute the steering for this vehicle.
-            
+
         Subclasses (actual behaviours) should call this method using:
-        
+
         >>> SteeringBehaviour.__init__(self, owner)
-        
+
         Where owner is the vehicle that will use this behaviour.
         """
         self.owner = owner
-        
+
     def force(self, delta_t):
         """Compute the owner's steering force for this behaviour."""
         raise NotImplementedError
-    
+
     def set_params(self, *args, **kwargs):
         """Used by the owner/Navigator to change per-instance values."""
         raise NotImplementedError
+
 
 class Seek(SteeringBehaviour):
     def __init__(self, owner, target):
         SteeringBehaviour.__init__(self, owner)
         self.target = target
-        
+
     def force(self):
         owner = self.owner
         targetvel = (self.target - owner.pos).unit()
         targetvel = targetvel.scm(owner.maxspeed)
         return targetvel - owner.vel
 
+
+FLEE_PANIC_SQ = 300
+class Flee(SteeringBehaviour):
+    def __init__(self, owner, target, panic_sq = FLEE_PANIC_SQ):
+        SteeringBehaviour.__init__(self, owner)
+        self.target = target
+        self.panic_sq = panic_sq
+
+    def force(self):
+        owner = self.owner
+        targetvel = (owner.pos - self.target)
+        if 1 < targetvel.sqnorm() < self.panic_sq:
+            targetvel = targetvel.unit().scm(owner.maxspeed)
+            return targetvel - owner.vel
+        else:
+            return ZERO_VECTOR
+
+
+ARRIVE_DECEL_TWEAK = 10.0
+ARRIVE_DEFAULT_HESITANCE = 2.0
+class Arrive(SteeringBehaviour):
+    def __init__(self, owner, target, hesitance=ARRIVE_DEFAULT_HESITANCE):
+        """Gracefully ARRIVE at a target point.
+
+        This works like SEEK, except the vehicle gradually deccelerates as it
+        nears the target position. The optional third parameter controls the
+        amount of decceleration.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            target (Point2d): The target point that owner is to arrive at.
+            hesistance (float): Controls the time it takes to deccelerate;
+                higher values give more gradual (and slow) decceleration.
+                Suggested values are 1.0 - 10.0; default is 2.0.
+
+        Todo:
+            Stability analysis suggested that hesistance should be set above a
+            ceratin threshold, based on the owner's mass. Implement this as
+            the default value and/or scale based on this threshold.
+        """
+        SteeringBehaviour.__init__(self, owner)
+        self.target = target
+        self.hesitance = hesitance
+
+    def force(self):
+
+        owner = self.owner
+        target_offset = (self.target - owner.pos)
+        dist = target_offset.norm()
+        if dist > 0:
+            speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
+            if speed > owner.maxspeed:
+                speed = owner.maxspeed
+            targetvel = target_offset.scm(speed/dist)
+            return targetvel - owner.vel
+        else:
+            return ZERO_VECTOR
+
+##############################################################################
 class Navigator(object):
-    
+
     def __init__(self, vehicle):
         """Helper class for managing steering behaviours."""
         self.vehicle = vehicle
         self.steering_force = Point2d(0,0)
         self.active_behaviours = list()
         # TODO: Give the owner vehicle a reference to its Navigator
-    
+
     def update(self, delta_t=1.0):
         # TODO: Option for budgeted force; choose this in __init__()
         self.compute_force_simple()
         self.vehicle.move(1.0, self.steering_force)
-    
+
     def compute_force_simple(self):
         """Updates the current steering force using all active behaviors.
 
@@ -150,95 +210,10 @@ class Navigator(object):
 ############################################################################
 ############################################################################
 ############################################################################
-def force_seek(owner, target):
-    """Steering force for SEEK behaviour.
 
-    This is a simple behaviour that directs the owner towards a given point.
-    Other, more complex behaviours make use of this.
 
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    position: Point2d
-        The target point that owner is seeking to.
-    """
-    targetvel = (target - owner.pos).unit()
-    targetvel = targetvel.scm(owner.maxspeed)
-    return targetvel - owner.vel
 
-def activate_seek(steering, target):
-    """Activate SEEK behaviour."""
-    # TODO: Error checking here.
-    steering.targets['SEEK'] = (Point2d(*target),)
-    return True
 
-def force_flee(owner, target, panic_squared=FLEE_PANIC_SQ):
-    """Steering force for FLEE behaviour.
-
-    Another simple behaviour that directs the owner away from a given point.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    position: Point2d
-        The target point that owner is fleeing from.
-    panic_squared: float
-        If specified, only compute a flee_force if squared distance
-        to the target is less than this value.
-    """
-    targetvel = (owner.pos - target)
-    if 1 < targetvel.sqnorm() < panic_squared:
-        targetvel = targetvel.unit().scm(owner.maxspeed)
-        return targetvel - owner.vel
-    else:
-        return ZERO_VECTOR
-
-def activate_flee(steering, target):
-    """Activate FLEE behaviour."""
-    # TODO: Error checking here.
-    # TODO: Provide a way to set individual panic_squared values??
-    steering.targets['FLEE'] = (Point2d(*target),)
-    return True
-
-def force_arrive(owner, target, hesitance=2.0):
-    """Steering force for ARRIVE behaviour.
-
-    This works like SEEK, except the vehicle gradually deccelerates as it
-    nears the target position. The optional third parameter controls the
-    amount of decceleration.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    position: Point2d
-        The target point that owner is to arrive at.
-    hesistance: float
-        Controls the time it takes to deccelerate; higher values give more
-        gradual (and slow) decceleration. Suggested values are 1.0 - 10.0.
-
-    """
-    target_offset = (target - owner.pos)
-    dist = target_offset.norm()
-    if dist > 0:
-        # The constant on the next line may need tweaking
-        speed = dist / (ARRIVE_DECEL_TWEAK * hesitance)
-        if speed > owner.maxspeed:
-            speed = owner.maxspeed
-        targetvel = target_offset.scm(speed/dist)
-        return targetvel - owner.vel
-    else:
-        return ZERO_VECTOR
-
-def activate_arrive(steering, target):
-    """Activate ARRIVE behaviour."""
-    if len(target) == 2:
-        steering.targets['ARRIVE'] = (Point2d(*target),)
-    else:
-        steering.targets['ARRIVE'] = (Point2d(target[0], target[1]), target[2])
-    return True
 
 def force_pursue(owner, prey):
     """Steering force for PURSUE behaviour.

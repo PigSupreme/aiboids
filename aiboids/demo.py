@@ -23,70 +23,7 @@ from vehicle2d import BasePointMass2d
 
 ZERO_VECTOR = Point2d(0,0)
 
-
-class SteeringBehaviour(object):
-    def __init__(self, owner):
-        """Base class for all steering behaviours.
-        
-        Args:
-            owner (vehicle): Compute the steering for this vehicle.
-            
-        Subclasses (actual behaviours) should call this method using:
-        
-        >>> SteeringBehaviour.__init__(self, owner)
-        
-        Where owner is the vehicle that will use this behaviour.
-        """
-        self.owner = owner
-        
-    def force(self, delta_t):
-        """Compute the owner's steering force for this behaviour."""
-        raise NotImplementedError
-    
-    def set_params(self, *args, **kwargs):
-        """Used by the owner/Navigator to change per-instance values."""
-        raise NotImplementedError
-
-class Seek(SteeringBehaviour):
-    def __init__(self, owner, target):
-        SteeringBehaviour.__init__(self, owner)
-        self.target = target
-        
-    def force(self):
-        owner = self.owner
-        targetvel = (self.target - owner.pos).unit()
-        targetvel = targetvel.scm(owner.maxspeed)
-        return targetvel - owner.vel
-
-class Navigator(object):
-    
-    def __init__(self, vehicle):
-        """Helper class for managing steering behaviours."""
-        self.vehicle = vehicle
-        self.steering_force = Point2d(0,0)
-        self.active_behaviours = list()
-        # TODO: Give the owner vehicle a reference to its Navigator
-    
-    def update(self, delta_t=1.0):
-        # TODO: Option for budgeted force; choose this in __init__()
-        self.compute_force_simple()
-        self.vehicle.move(1.0, self.steering_force)
-    
-    def compute_force_simple(self):
-        """Updates the current steering force using all active behaviors.
-
-        Note:
-            Since the vehicle classes are expected to limit the maximum force
-            applied, this function no longer does so.
-        """
-        self.steering_force.zero()
-        owner = self.vehicle
-        # If any flocking is active, determine neighbors first
-        #if self.flocking is True:
-        #    self.flag_neighbor_vehicles(self.flockmates)
-        # Iterate over active behaviours and accumulate force from each
-        for behaviour in self.active_behaviours:
-            self.steering_force += behaviour.force()
+from steering import Navigator, Seek, Flee, Arrive
 
 if __name__ == "__main__":
     pygame.init()
@@ -174,8 +111,6 @@ if __name__ == "__main__":
 #        obj[i].steering.set_target(AVOID=obslist, WALLAVOID=[30, wall_list])
     ### End of vehicle behavior ###
 
-
-
     # Green (SEEK)
     green_nav = Navigator(green)
     newseek = Seek(green, obj[1].pos)
@@ -183,13 +118,13 @@ if __name__ == "__main__":
 
     ### Main loop ###
     ticks = 0
-    TARGET_FREQ = 100
+    TARGET_FREQ = 200
     while 1:
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
                 pygame.quit()
                 sys.exit()
-                
+
         # Update steering targets every so often
         ticks += 1
         if ticks == TARGET_FREQ:
@@ -199,10 +134,10 @@ if __name__ == "__main__":
             new_pos = Point2d(x_new,y_new)
             obj[1].pos = new_pos
             del green_nav.active_behaviours[0]
-            newseek = Seek(green, new_pos)
+            newseek = Arrive(green, new_pos)
             green_nav.active_behaviours= [newseek]
             ticks = 0
-            
+
         # Update Vehicles (via manually calling each move() method)
         force = green_nav.update()
 
