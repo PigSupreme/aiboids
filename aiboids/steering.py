@@ -1,5 +1,5 @@
 # steering.py
-"""Module containing PyBOID steering behavior functions.
+"""Module containing AiBoid steering behavior functions.
 
 Each type of behaviour needs a force_foo() function to compute the actual
 steering force. The first argument ("owner") is the vehicle that is being
@@ -33,6 +33,8 @@ TODO: Updates to self.flocking are handled through set_priorities(), which is
 a sensible thing, since set_priorities() is the function that gets called when
 there is any kind of behaviour change. Make up our minds whether this is truly
 the right approach and change documentation appropriately.
+
+TODO: Behaviours are instances of some class, just like states???
 """
 
 # for python3 compat
@@ -48,6 +50,7 @@ from point2d import Point2d
 import logging
 
 # Default constants for the various steering behaviours
+# TODO: Look at westworld examples for automatic imports
 from steering_constants import STEERING_DEFAULTS
 FLEE_PANIC_SQ = STEERING_DEFAULTS['FLEE_PANIC_SQ']
 ARRIVE_DECEL_TWEAK = STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
@@ -76,7 +79,77 @@ rand_gen = Random()
 rand_gen.seed()
 rand_uni = lambda x: rand_gen.uniform(-x, x)
 
+###
+###
+###
 
+class SteeringBehaviour(object):
+    def __init__(self, owner):
+        """Base class for all steering behaviours.
+        
+        Args:
+            owner (vehicle): Compute the steering for this vehicle.
+            
+        Subclasses (actual behaviours) should call this method using:
+        
+        >>> SteeringBehaviour.__init__(self, owner)
+        
+        Where owner is the vehicle that will use this behaviour.
+        """
+        self.owner = owner
+        
+    def force(self, delta_t):
+        """Compute the owner's steering force for this behaviour."""
+        raise NotImplementedError
+    
+    def set_params(self, *args, **kwargs):
+        """Used by the owner/Navigator to change per-instance values."""
+        raise NotImplementedError
+
+class Seek(SteeringBehaviour):
+    def __init__(self, owner, target):
+        SteeringBehaviour.__init__(self, owner)
+        self.target = target
+        
+    def force(self):
+        owner = self.owner
+        targetvel = (self.target - owner.pos).unit()
+        targetvel = targetvel.scm(owner.maxspeed)
+        return targetvel - owner.vel
+
+class Navigator(object):
+    
+    def __init__(self, vehicle):
+        """Helper class for managing steering behaviours."""
+        self.vehicle = vehicle
+        self.steering_force = Point2d(0,0)
+        self.active_behaviours = list()
+        # TODO: Give the owner vehicle a reference to its Navigator
+    
+    def update(self, delta_t=1.0):
+        # TODO: Option for budgeted force; choose this in __init__()
+        self.compute_force_simple()
+        self.vehicle.move(1.0, self.steering_force)
+    
+    def compute_force_simple(self):
+        """Updates the current steering force using all active behaviors.
+
+        Note:
+            Since the vehicle classes are expected to limit the maximum force
+            applied, this function no longer does so.
+        """
+        self.steering_force.zero()
+        owner = self.vehicle
+        # If any flocking is active, determine neighbors first
+        #if self.flocking is True:
+        #    self.flag_neighbor_vehicles(self.flockmates)
+        # Iterate over active behaviours and accumulate force from each
+        for behaviour in self.active_behaviours:
+            self.steering_force += behaviour.force()
+
+############################################################################
+############################################################################
+############################################################################
 def force_seek(owner, target):
     """Steering force for SEEK behaviour.
 
