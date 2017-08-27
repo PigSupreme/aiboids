@@ -33,8 +33,6 @@ TODO: Updates to self.flocking are handled through set_priorities(), which is
 a sensible thing, since set_priorities() is the function that gets called when
 there is any kind of behaviour change. Make up our minds whether this is truly
 the right approach and change documentation appropriately.
-
-TODO: Behaviours are instances of some class, just like states???
 """
 
 # for python3 compat
@@ -94,7 +92,7 @@ class SteeringBehaviour(object):
 
         >>> SteeringBehaviour.__init__(self, owner)
 
-        Where owner is the vehicle that will use this behaviour.
+        Where owner is the vehicle that will use the subclass behaviour.
         """
         self.owner = owner
 
@@ -109,6 +107,15 @@ class SteeringBehaviour(object):
 
 class Seek(SteeringBehaviour):
     def __init__(self, owner, target):
+        """SEEK towards a fixed point at maximum speed.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            target (Point2d): The point to SEEK towards.
+
+        Note:
+            Use ARRIVE for a more graceful approach and to prevent jittering.
+        """
         SteeringBehaviour.__init__(self, owner)
         self.target = target
 
@@ -119,12 +126,19 @@ class Seek(SteeringBehaviour):
         return targetvel - owner.vel
 
 
-FLEE_PANIC_SQ = 300
 class Flee(SteeringBehaviour):
-    def __init__(self, owner, target, panic_sq = FLEE_PANIC_SQ):
+    def __init__(self, owner, target, panic_dist=INF):
+        """FLEE from a fixed point at maximum speed.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            target (Point2d): The point to FLEE from.
+            panic_dist (float, optional): If specified, FLEE only when the
+                distance to the target is less than this value.
+        """
         SteeringBehaviour.__init__(self, owner)
         self.target = target
-        self.panic_sq = panic_sq
+        self.panic_sq = panic_dist**2
 
     def force(self):
         owner = self.owner
@@ -142,16 +156,15 @@ class Arrive(SteeringBehaviour):
     def __init__(self, owner, target, hesitance=ARRIVE_DEFAULT_HESITANCE):
         """Gracefully ARRIVE at a target point.
 
-        This works like SEEK, except the vehicle gradually deccelerates as it
-        nears the target position. The optional third parameter controls the
-        amount of decceleration.
-
         Args:
             owner (SimpleVehicle2d): The vehicle computing this force.
             target (Point2d): The target point that owner is to arrive at.
             hesistance (float): Controls the time it takes to deccelerate;
                 higher values give more gradual (and slow) decceleration.
                 Suggested values are 1.0 - 10.0; default is 2.0.
+
+        This works like SEEK, except the vehicle gradually deccelerates as it
+        nears the target position.
 
         Todo:
             Stability analysis suggested that hesistance should be set above a
@@ -163,7 +176,6 @@ class Arrive(SteeringBehaviour):
         self.hesitance = hesitance
 
     def force(self):
-
         owner = self.owner
         target_offset = (self.target - owner.pos)
         dist = target_offset.norm()
@@ -171,10 +183,140 @@ class Arrive(SteeringBehaviour):
             speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
             if speed > owner.maxspeed:
                 speed = owner.maxspeed
-            targetvel = target_offset.scm(speed/dist)
+            targetvel = (speed/dist)*target_offset
             return targetvel - owner.vel
         else:
             return ZERO_VECTOR
+
+AVOID_MIN_LENGTH = 25.0
+AVOID_BRAKE_WEIGHT = 2.0
+class ObstacleAvoid(SteeringBehaviour):
+    def __init__(self, owner, obstacle_list):
+        """AVOID stationary obstacles by steering around them.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            obs_list (list of SimpleObstacle2d): Obstacles to check for avoidance.
+
+        This projects a box in front of the owner and tries to find an obstacle
+        for which collision is imminent (not always the closest obstacle). The
+        owner will attempt to steer around that obstacle.
+
+        """
+        SteeringBehaviour.__init__(self, owner)
+        self.obstacles = tuple(obstacle_list)
+
+    def force(self):
+        owner = self.owner
+        # Obstacles closer than this distance will be avoided
+        front_d = (1 + owner.vel.norm()/owner.maxspeed)*AVOID_MIN_LENGTH
+        front_sq = front_d * front_d
+
+        # Find the closest obstacle within the detection box
+        xmin = 1 + front_d
+        obs_closest = None
+        for obstacle in self.obstacles:
+            # Consider only obstacles that are nearby
+            target = obstacle.pos
+            diff = target - owner.pos
+            if diff.sqnorm() < front_sq:
+                # Convert to local coordinates of the owner
+                local_x = diff / owner.front # This is an Orthogonal projection
+                # Only consider objects in front
+                if local_x > 0:
+                    # Find nearest x-intercept of extended bounding circle
+                    local_y = diff / owner.left
+                    expr = owner.radius + obstacle.radius
+                    xval = local_x - sqrt(expr*expr + local_y*local_y)
+                    # If this obstacle is closer, update minimum values
+                    if xval < xmin:
+                        xmin, lx, ly = xval, local_x, local_y
+                        obs_closest = obstacle
+
+        # If there is a closest obstacle, avoid it
+        if obs_closest:
+            lr = obs_closest.radius
+            lat_scale = (lr - ly)*(2.0 - lr / front_d)
+            brake_scale = (lr - lx)*AVOID_BRAKE_WEIGHT
+            result = owner.front.scm(brake_scale) + owner.left.scm(lat_scale)
+            return result
+        else:
+            return ZERO_VECTOR
+
+
+WALLAVOID_SIDE_SCALE = 0.8
+class WallAvoid(SteeringBehaviour):
+    def __init__(self, owner, front_length, wall_list):
+        """WALLAVOID behaviour with three whiskers.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            front_length (float): Length of the forward whisker.
+            wall_list (list of BaseWall2d): List of walls to test against.
+
+        This uses a virtual whisker in front of the vehicle, and two side
+        whiskers at 45 degrees from the front. The sides are slighly smaller;
+        length is scaled by the WALLAVOID_SIDE_SCALE steering constant.
+
+        For each whisker, we find the wall having its point of intersection
+        closest to the base of the whisker. If such a wall is detected, it
+        contributes a force in the direction of the wall normal, proportional
+        to the penetration depth of the whisker.
+        """
+        SteeringBehaviour.__init__(self, owner)
+        # Three whiskers: Front and left/right by 45 degrees
+        # Side whiskers are scaled by WALLAVOID_WHISKER_SCALE
+        self.whisker_coords = ((1,0),(SQRT_HALF,SQRT_HALF),(SQRT_HALF,-SQRT_HALF))
+        self.whisker_sizes = (front_length, WALLAVOID_SIDE_SCALE, WALLAVOID_SIDE_SCALE)
+        self.whisker_num = 3
+        self.walls = wall_list
+
+    def force(self):#owner, whisk_units, whisk_lens, wall_list):
+
+        owner = self.owner
+
+        #n = len(whisk_units)
+        whisker_tip = self.whisker_num*[0]
+        closest_wall = self.whisker_num*[None]
+
+        # Convert unit vectors for each whisker to global coordinates
+        for i in range(self.whisker_num):
+            (u,v) = self.whisker_coords[i]
+            whisker_tip[i] = u*owner.front + v*owner.left
+
+        # This will hold the shortest distances along each whisker to a wall,
+        # but ignoring any walls beyond the length of the whisker.
+        t_min = list(self.whisker_sizes)
+
+        # Find the closest wall intersecting each whisker
+        for wall in self.walls:
+            # TODO: Document the vector math that makes this magic work!
+            # Numerator of intersection test is the same for all whiskers
+            t_numer = wall.front * (wall.pos - owner.pos)
+            for i in range(self.whisker_num):
+                # Is vehicle in front and whisker tip behind wall's infinite line?
+                try:
+                    t = t_numer / (wall.front * whisker_tip[i])
+                except ZeroDivisionError:
+                    # Whisker is parallel to wall in this case, no intersection
+                    continue
+                if 0 < t < t_min[i]:
+                    # Is the point of intersection actually on the wall segment?
+                    poi = owner.pos + t*whisker_tip[i]
+                    if (wall.pos - poi).sqnorm() <= wall.rsq:
+                        # This is the closest intersecting wall so far
+                        closest_wall[i] = wall
+                        t_min[i] = t
+
+        # For each whisker, add the force away from the closest wall (if any)
+        result = Point2d(0,0)
+        for i in range(self.whisker_num):
+            if closest_wall[i] is not None:
+                depth = self.whisker_sizes[i] - t_min[i]
+                result += depth*closest_wall[i].front
+
+        # Scale by owner radius; bigger objects should tend to stay away
+        return result.scm(owner.radius)
 
 ##############################################################################
 class Navigator(object):
@@ -189,7 +331,7 @@ class Navigator(object):
     def update(self, delta_t=1.0):
         # TODO: Option for budgeted force; choose this in __init__()
         self.compute_force_simple()
-        self.vehicle.move(1.0, self.steering_force)
+        self.vehicle.move(delta_t, self.steering_force)
 
     def compute_force_simple(self):
         """Updates the current steering force using all active behaviors.
@@ -309,62 +451,7 @@ def activate_wander(steering, target):
     steering.targets['WANDER'] = (steering,)
     return True
 
-def force_avoid(owner, obs_list):
-    """Steering force for AVOID stationary obstacles behaviour.
 
-    This projects a box in front of the owner and tries to find an obstacle
-    for which collision is imminent (not always the closest obstacle). The
-    owner will attempt to steer around that obstacle.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    obs_list: list of BasePointMass2d
-        List of obstacles to check for avoidance.
-    """
-
-    # Obstacles closer than this distance will be avoided
-    front_d = (1 + owner.vel.norm()/owner.maxspeed)*AVOID_MIN_LENGTH
-    front_sq = front_d * front_d
-
-    # Find the closest obstacle within the detection box
-    xmin = 1 + front_d
-    obs_closest = None
-    for obstacle in obs_list:
-        # Consider only obstacles that are nearby
-        target = obstacle.pos
-        diff = target - owner.pos
-        if diff.sqnorm() < front_sq:
-            # Convert to local coordinates of the owner
-            local_x = diff / owner.front # This is an Orthogonal projection
-            # Only consider objects in front
-            if local_x > 0:
-                # Find nearest x-intercept of extended bounding circle
-                local_y = diff / owner.left
-                expr = owner.radius + obstacle.radius
-                xval = local_x - sqrt(expr*expr + local_y*local_y)
-                # If this obstacle is closer, update minimum values
-                if xval < xmin:
-                    xmin, lx, ly = xval, local_x, local_y
-                    obs_closest = obstacle
-
-    # If there is a closest obstacle, avoid it
-    if obs_closest:
-        lr = obs_closest.radius
-        lat_scale = (lr - ly)*(2.0 - lr / front_d)
-        brake_scale = (lr - lx)*AVOID_BRAKE_WEIGHT
-        result = owner.front.scm(brake_scale) + owner.left.scm(lat_scale)
-        return result
-    else:
-        return ZERO_VECTOR
-
-def activate_avoid(steering, target):
-    """Activate AVOID behaviour."""
-    steering.targets['AVOID'] = (target,)
-    # TODO: Fix arguments, check errors
-    # Currently we're passing a list of SimpleObstacle2d
-    return True
 
 def force_takecover(owner, target, obs_list, max_range, stalk=False):
     """Steering force for TAKECOVER behind obstacle.
@@ -419,82 +506,6 @@ def activate_takecover(steering, target):
     steering.targets['TAKECOVER'] = target
     return True
 
-def force_wallavoid(owner, whisk_units, whisk_lens, wall_list):
-    """Steering force for WALLAVOID behaviour with aribtrary whiskers.
-
-    For each whisker, we find the wall with point of intersection closest
-    to the base of the whisker. If such a wall is detected, it contributes a
-    force in the direction of the wall normal proportional to the penetration
-    depth of the whisker. Total force is the resultant vector sum.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    whisk_units: list of Point2d or 2-tuple
-        Whisker UNIT vectors in owner's local coordinates (forward is x+).
-    whisk_lens: list of positive int or float
-        Lengths of whiskers, in same order as whisk_units above.
-    wall_list: list of BaseWall2d
-        Walls to test for avoidance.
-    """
-
-    n = len(whisk_units)
-    whisk_front = n*[Point2d(0,0)]
-    closest_wall = n*[None]
-
-    # Covert unit vectors for each whisker to global coordinates
-    for i in range(n):
-        whisker = whisk_units[i]
-        unit_whisker = owner.front.scm(whisker[0]) + owner.left.scm(whisker[1])
-        whisk_front[i] = unit_whisker
-        t_min = whisk_lens[:]
-
-    # Find the closest wall intersecting each whisker
-    for wall in wall_list:
-        # TODO: Check against wall radius for better efficiency??
-
-        # Numerator of intersection test is the same for all whiskers
-        t_numer = wall.front * (wall.pos - owner.pos)
-        for i in range(n):
-            # Is vehicle in front and whisker tip behind wall's infinite line?
-            try:
-                t = t_numer / (wall.front * whisk_front[i])
-            except ZeroDivisionError:
-                # Whisker is parallel to wall in this case, no intersection
-                continue
-            if 0 < t < t_min[i]:
-                # Is the point of intersection actually on the wall segment?
-                poi = owner.pos + whisk_front[i].scm(t)
-                if (wall.pos - poi).sqnorm() <= wall.rsq:
-                    # This is the closest intersecting wall so far
-                    closest_wall[i] = wall
-                    t_min[i] = t
-
-    # For each whisker, add the force away from the closest wall (if any)
-    result = Point2d(0,0)
-    for i in range(n):
-        if closest_wall[i] is not None:
-            depth = whisk_lens[i] - t_min[i]
-            result += closest_wall[i].front.scm(depth)
-
-    # Scale by owner radius; bigger objects should tend to stay away
-    return result.scm(owner.radius)
-
-def activate_wallavoid(steering, info):
-    """Activate WALLAVOID behaviour.
-
-    Note
-    ----
-
-    Whisker angles are assumed at 45 degrees; scale is set by steering constants.
-    """
-    # TODO: Fix arguments, check errors
-    # Three whiskers: Front and left/right by 45 degrees
-    whiskers = [Point2d(1,0), Point2d(SQRT_HALF, SQRT_HALF), Point2d(SQRT_HALF, -SQRT_HALF)]
-    whisker_lengths = [info[0]] + 2*[info[0]*WALLAVOID_WHISKER_SCALE]
-    steering.targets['WALLAVOID'] = [whiskers, whisker_lengths, info[1]]
-    return True
 
 def force_guard(owner, guard_this, guard_from, aggro):
     """Steering force for GUARD behavior.

@@ -1,7 +1,8 @@
 # vehicle2d.py
 """Module containing Vehicle/Obstacle classes, for use with Pygame.
 
-TODO: Write a better docstring for this module.
+Todo:
+    Write a better docstring for this module.
 """
 
 # for python3 compat
@@ -10,13 +11,17 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
-import os, sys, pygame, copy
-from pygame.locals import RLEACCEL
+import sys
+sys.path.append('..')
+
+import os, pygame, copy
+try:
+    from pygame.locals import RLEACCEL
+except ImportError:
+    pass
 
 INF = float('inf')
 
-# TODO: Adjust this depending on where this file ends up.
-sys.path.extend(['../vpoints', '../vehicle'])
 from point2d import Point2d
 
 from steering import SteeringBehavior
@@ -36,27 +41,20 @@ SPEED_EPSILON = .000000001
 def load_pygame_image(name, colorkey=None):
     """Loads image from current working directory for use in pygame.
 
-    Parameters
-    ----------
-    name: string
-        Image file to load (must be pygame-compatible format)
-    colorkey: pygame.Color
-        Used to set a background color for this image that will be ignored
-        during blitting. If set to -1, the upper-left pixel color will be
-        used as the background color. See pygame.Surface.set_colorkey() for
-        further details.
+    Args:
+        name (string): Image file to load; must be pygame-compatible.
+        colorkey: (pygame.Color): Used to set a background color for this image
+            that will be ignored during blitting. If set to -1, the upper-left
+            pixel color will be used as the background color.
 
-    Returns
-    -------
-    (pygame.Surface, pygame.rect):
-        For performance reasons, the returned Surface is the same format as
-        the pygame display. The alpha channel is removed.
+    Returns:
+        (pygame.Surface, pygame.Rect): A pygame (Surface, Rect) containing the
+        image information. For performance(?), Surface is the same format as
+        the pygame display, with the alpha channel removed.
 
-    Note
-    ----
-    TODO: This function is imported by the demos, but perhaps there is a
-    better location for it?
-
+    TODO:
+        This function is imported by the demos, but perhaps there is a better
+        location for it?
     """
     imagefile = os.path.join(os.getcwd(), name)
     try:
@@ -80,19 +78,12 @@ def load_pygame_image(name, colorkey=None):
 class BaseWall2d(object):
     """A base class for static wall-type obstacles.
 
-    Parameters
-    ----------
-
-    center: tuple or Point2d
-        The center of the wall in screen coordinates.
-    length: int
-        Length of the wall.
-    thick: int
-        Thickness of the wall.
-    f_normal: Point2d
-        Normal vector out from the front of the wall.
-    color: 3-tuple or pygame.Color, optional
-        Color for rendering. Defaults to (0,0,0)
+    Args:
+        center (tuple or Point2d): The center of the wall in screen coordinates.
+        length (int): Length of the wall in pixels.
+        thick (int): Thickness of the wall in pixels.
+        f_normal (Point2d): Normal vector out from the front of the wall.
+        color (pygame.Color, optional): Color for rendering. Defaults to (0,0,0)
     """
 
     class BaseWall2dSprite(pygame.sprite.Sprite):
