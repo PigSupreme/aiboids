@@ -82,18 +82,19 @@ rand_uni = lambda x: rand_gen.uniform(-x, x)
 ###
 
 class SteeringBehaviour(object):
+    """Base class for all steering behaviours.
+
+    Args:
+        owner (vehicle): Compute the steering for this vehicle.
+
+    Subclasses (actual behaviours) should call this method using:
+
+    >>> SteeringBehaviour.__init__(self, owner)
+
+    Where owner is the vehicle that will use the subclass behaviour.
+    """
     def __init__(self, owner):
-        """Base class for all steering behaviours.
 
-        Args:
-            owner (vehicle): Compute the steering for this vehicle.
-
-        Subclasses (actual behaviours) should call this method using:
-
-        >>> SteeringBehaviour.__init__(self, owner)
-
-        Where owner is the vehicle that will use the subclass behaviour.
-        """
         self.owner = owner
 
     def force(self, delta_t):
@@ -106,16 +107,16 @@ class SteeringBehaviour(object):
 
 
 class Seek(SteeringBehaviour):
+    """SEEK towards a fixed point at maximum speed.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        target (Point2d): The point to SEEK towards.
+
+    Note:
+        Use ARRIVE for a more graceful approach and to prevent jittering.
+    """
     def __init__(self, owner, target):
-        """SEEK towards a fixed point at maximum speed.
-
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            target (Point2d): The point to SEEK towards.
-
-        Note:
-            Use ARRIVE for a more graceful approach and to prevent jittering.
-        """
         SteeringBehaviour.__init__(self, owner)
         self.target = target
 
@@ -127,15 +128,16 @@ class Seek(SteeringBehaviour):
 
 
 class Flee(SteeringBehaviour):
-    def __init__(self, owner, target, panic_dist=INF):
-        """FLEE from a fixed point at maximum speed.
+    """FLEE from a fixed point at maximum speed.
 
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            target (Point2d): The point to FLEE from.
-            panic_dist (float, optional): If specified, FLEE only when the
-                distance to the target is less than this value.
-        """
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        target (Point2d): The point to FLEE from.
+        panic_dist (float, optional): If specified, FLEE only when the
+            distance to the target is less than this value.
+    """
+    def __init__(self, owner, target, panic_dist=INF):
+
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.panic_sq = panic_dist**2
@@ -153,24 +155,25 @@ class Flee(SteeringBehaviour):
 ARRIVE_DECEL_TWEAK = 10.0
 ARRIVE_DEFAULT_HESITANCE = 2.0
 class Arrive(SteeringBehaviour):
+    """Gracefully ARRIVE at a target point.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        target (Point2d): The target point that owner is to arrive at.
+        hesistance (float): Controls the time it takes to deccelerate;
+            higher values give more gradual (and slow) decceleration.
+            Suggested values are 1.0 - 10.0; default is 2.0.
+
+    This works like SEEK, except the vehicle gradually deccelerates as it
+    nears the target position.
+
+    Todo:
+        Stability analysis suggested that hesistance should be set above a
+        ceratin threshold, based on the owner's mass. Implement this as
+        the default value and/or scale based on this threshold.
+    """
     def __init__(self, owner, target, hesitance=ARRIVE_DEFAULT_HESITANCE):
-        """Gracefully ARRIVE at a target point.
 
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            target (Point2d): The target point that owner is to arrive at.
-            hesistance (float): Controls the time it takes to deccelerate;
-                higher values give more gradual (and slow) decceleration.
-                Suggested values are 1.0 - 10.0; default is 2.0.
-
-        This works like SEEK, except the vehicle gradually deccelerates as it
-        nears the target position.
-
-        Todo:
-            Stability analysis suggested that hesistance should be set above a
-            ceratin threshold, based on the owner's mass. Implement this as
-            the default value and/or scale based on this threshold.
-        """
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.hesitance = hesitance
@@ -191,18 +194,19 @@ class Arrive(SteeringBehaviour):
 AVOID_MIN_LENGTH = 25.0
 AVOID_BRAKE_WEIGHT = 2.0
 class ObstacleAvoid(SteeringBehaviour):
+    """AVOID stationary obstacles by steering around them.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        obs_list (list of SimpleObstacle2d): Obstacles to check for avoidance.
+
+    This projects a box in front of the owner and tries to find an obstacle
+    for which collision is imminent (not always the closest obstacle). The
+    owner will attempt to steer around that obstacle.
+
+    """
     def __init__(self, owner, obstacle_list):
-        """AVOID stationary obstacles by steering around them.
 
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            obs_list (list of SimpleObstacle2d): Obstacles to check for avoidance.
-
-        This projects a box in front of the owner and tries to find an obstacle
-        for which collision is imminent (not always the closest obstacle). The
-        owner will attempt to steer around that obstacle.
-
-        """
         SteeringBehaviour.__init__(self, owner)
         self.obstacles = tuple(obstacle_list)
 
@@ -246,23 +250,24 @@ class ObstacleAvoid(SteeringBehaviour):
 
 WALLAVOID_SIDE_SCALE = 0.8
 class WallAvoid(SteeringBehaviour):
+    """WALLAVOID behaviour with three whiskers.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        front_length (float): Length of the forward whisker.
+        wall_list (list of BaseWall2d): List of walls to test against.
+
+    This uses a virtual whisker in front of the vehicle, and two side
+    whiskers at 45 degrees from the front. The sides are slighly smaller;
+    length is scaled by the WALLAVOID_SIDE_SCALE steering constant.
+
+    For each whisker, we find the wall having its point of intersection
+    closest to the base of the whisker. If such a wall is detected, it
+    contributes a force in the direction of the wall normal, proportional
+    to the penetration depth of the whisker.
+    """
     def __init__(self, owner, front_length, wall_list):
-        """WALLAVOID behaviour with three whiskers.
 
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            front_length (float): Length of the forward whisker.
-            wall_list (list of BaseWall2d): List of walls to test against.
-
-        This uses a virtual whisker in front of the vehicle, and two side
-        whiskers at 45 degrees from the front. The sides are slighly smaller;
-        length is scaled by the WALLAVOID_SIDE_SCALE steering constant.
-
-        For each whisker, we find the wall having its point of intersection
-        closest to the base of the whisker. If such a wall is detected, it
-        contributes a force in the direction of the wall normal, proportional
-        to the penetration depth of the whisker.
-        """
         SteeringBehaviour.__init__(self, owner)
         # Three whiskers: Front and left/right by 45 degrees
         # Side whiskers are scaled by WALLAVOID_WHISKER_SCALE
@@ -320,9 +325,9 @@ class WallAvoid(SteeringBehaviour):
 
 ##############################################################################
 class Navigator(object):
-
+    """Helper class for managing steering behaviours."""
     def __init__(self, vehicle):
-        """Helper class for managing steering behaviours."""
+
         self.vehicle = vehicle
         self.steering_force = Point2d(0,0)
         self.active_behaviours = list()

@@ -10,4 +10,15 @@ AiBoids Python
    Generic Vector Code <vpoints>
    Entities and Messaging <base_entity>
    Generic State Machine Code <statemachine>
+   vehicle
+   steering
    demos/demos
+   steering
+
+ToDo List
+---------
+
+Auto-generated from docstring Todo's. Righteous!
+   
+.. todolist::
+
