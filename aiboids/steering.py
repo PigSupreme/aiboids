@@ -87,14 +87,13 @@ class SteeringBehaviour(object):
     Args:
         owner (vehicle): Compute the steering for this vehicle.
 
-    Subclasses (actual behaviours) should call this method using:
+    Subclasses (actual behaviours) should call this method using::
 
-    >>> SteeringBehaviour.__init__(self, owner)
+        SteeringBehaviour.__init__(self, owner)
 
     Where owner is the vehicle that will use the subclass behaviour.
     """
     def __init__(self, owner):
-
         self.owner = owner
 
     def force(self, delta_t):
@@ -122,8 +121,8 @@ class Seek(SteeringBehaviour):
 
     def force(self):
         owner = self.owner
-        targetvel = (self.target - owner.pos).unit()
-        targetvel = targetvel.scm(owner.maxspeed)
+        targetvel = (self.target - owner.pos)
+        targetvel.scale_to(owner.maxspeed)
         return targetvel - owner.vel
 
 
@@ -137,7 +136,6 @@ class Flee(SteeringBehaviour):
             distance to the target is less than this value.
     """
     def __init__(self, owner, target, panic_dist=INF):
-
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.panic_sq = panic_dist**2
@@ -173,7 +171,6 @@ class Arrive(SteeringBehaviour):
         the default value and/or scale based on this threshold.
     """
     def __init__(self, owner, target, hesitance=ARRIVE_DEFAULT_HESITANCE):
-
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.hesitance = hesitance
@@ -191,6 +188,42 @@ class Arrive(SteeringBehaviour):
         else:
             return ZERO_VECTOR
 
+WANDER_DISTANCE = 30.0
+WANDER_RADIUS = 25.0
+WANDER_JITTER = 15.0
+class Wander(SteeringBehaviour):
+    """Pseudo-randomly WANDER about.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        distance (float): Distance to center of WANDER circle; see below.
+        radius (float): Radius of the WANDER circle; see below.
+        jitter (float): Maximum jitter magnitude; see below.
+
+    WANDER projects an imaginary circle in directly front of the owner and
+    will SEEK towards a randomly-moving target on that circle. The center and
+    radius of this circle are determined by _distance_ and _radius_.
+
+    We displace the target point each update by a random vector (whose size is
+    limited by _jitter_) and rescale so the target remains on our circle.
+    """
+    def __init__(self, owner, distance=WANDER_DISTANCE, radius=WANDER_RADIUS, jitter=WANDER_JITTER):
+        SteeringBehaviour.__init__(self, owner)
+        self.radius = radius
+        self.distance = distance
+        self.jitter = jitter
+        self.offset = radius*owner.front
+
+    def force(self):
+        # Add a random displacement to previous target and re-scale
+        self.offset += Point2d(rand_uni(self.jitter), rand_uni(self.jitter))
+        self.offset.scale_to(self.radius)
+        # This SEEKs to the final target, using a computational trick
+        targetvel = self.distance*self.owner.front + self.offset
+        targetvel.scale_to(self.owner.maxspeed)
+        return targetvel - self.owner.vel
+
+
 AVOID_MIN_LENGTH = 25.0
 AVOID_BRAKE_WEIGHT = 2.0
 class ObstacleAvoid(SteeringBehaviour):
@@ -206,7 +239,6 @@ class ObstacleAvoid(SteeringBehaviour):
 
     """
     def __init__(self, owner, obstacle_list):
-
         SteeringBehaviour.__init__(self, owner)
         self.obstacles = tuple(obstacle_list)
 
@@ -267,7 +299,6 @@ class WallAvoid(SteeringBehaviour):
     to the penetration depth of the whisker.
     """
     def __init__(self, owner, front_length, wall_list):
-
         SteeringBehaviour.__init__(self, owner)
         # Three whiskers: Front and left/right by 45 degrees
         # Side whiskers are scaled by WALLAVOID_WHISKER_SCALE
@@ -322,6 +353,9 @@ class WallAvoid(SteeringBehaviour):
 
         # Scale by owner radius; bigger objects should tend to stay away
         return result.scm(owner.radius)
+
+
+
 
 ##############################################################################
 class Navigator(object):
@@ -420,43 +454,6 @@ def activate_evade(steering, predator):
     # TODO: Error checking here.
     steering.targets['EVADE'] = (predator,)
     return True
-
-def force_wander(owner, steering):
-    """Steering force for WANDER behavior.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force
-    steering: SteeringBehavior
-        An instance of SteeringBehavior (*not* a vehicle, see note below)
-
-    Note
-    ----
-    WANDER requires persistant data (specifically, the target of the wander
-    circle), so we need access to the SteeringBehavior itself instead of the
-    vehicle that owns it.
-    """
-    params = steering.wander_params
-    jitter = params[2]
-
-    # Add a random displacement to previous target and reproject
-    target = steering.wander_target + Point2d(rand_uni(jitter), rand_uni(jitter))
-    target.normalize()
-    target = target.scm(params[1])
-    steering.wander_target = target
-    return force_seek(owner, owner.pos + target + owner.front.scm(params[0]))
-
-def activate_wander(steering, target):
-    """Activate WANDER behaviour."""
-    # TODO: Fix arguments, check errors
-    steering.wander_params = target
-    steering.wander_target = steering.vehicle.front
-    # Next line may seem weird, but needed for unified interface.
-    steering.targets['WANDER'] = (steering,)
-    return True
-
-
 
 def force_takecover(owner, target, obs_list, max_range, stalk=False):
     """Steering force for TAKECOVER behind obstacle.

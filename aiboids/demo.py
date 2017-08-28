@@ -25,7 +25,7 @@ from vehicle2d import BaseWall2d, SimpleObstacle2d
 
 ZERO_VECTOR = Point2d(0,0)
 
-from steering import Navigator, Seek, Flee, Arrive, ObstacleAvoid, WallAvoid
+from steering import Navigator, Seek, Flee, Arrive, ObstacleAvoid, WallAvoid, Wander
 
 if __name__ == "__main__":
     pygame.init()
@@ -114,10 +114,10 @@ if __name__ == "__main__":
 #        obj[i].steering.set_target(AVOID=obslist, WALLAVOID=[30, wall_list])
     ### End of vehicle behavior ###
 
-    # Green (SEEK)
+    # Green (for demo)
     green_nav = Navigator(green)
-    newseek = Seek(green, obj[1].pos)
-    green_nav.active_behaviours.append(newseek)
+    demo_beh = Wander(green)
+    green_nav.active_behaviours.append(demo_beh)
     newavoid = ObstacleAvoid(green, obslist)
     green_nav.active_behaviours.append(newavoid)
     wallavoid = WallAvoid(green, 30.0, wall_list)
@@ -140,9 +140,9 @@ if __name__ == "__main__":
             y_new = randint(30, sc_height-30)
             new_pos = Point2d(x_new,y_new)
             obj[1].pos = new_pos
-            del green_nav.active_behaviours[0]
-            new_beh = Flee(green, new_pos)
-            green_nav.active_behaviours.insert(0, new_beh)
+            #del green_nav.active_behaviours[0]
+            #new_beh = Flee(green, new_pos)
+            #green_nav.active_behaviours.insert(0, new_beh)
             ticks = 0
 
         # Update Vehicles (via manually calling each move() method)
