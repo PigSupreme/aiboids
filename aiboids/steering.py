@@ -143,7 +143,7 @@ class Flee(SteeringBehaviour):
     def force(self):
         owner = self.owner
         targetvel = (owner.pos - self.target)
-        if 1 < targetvel.sqnorm() < self.panic_sq:
+        if 0 < targetvel.sqnorm() < self.panic_sq:
             targetvel = targetvel.unit().scm(owner.maxspeed)
             return targetvel - owner.vel
         else:
@@ -354,7 +354,86 @@ class WallAvoid(SteeringBehaviour):
         # Scale by owner radius; bigger objects should tend to stay away
         return result.scm(owner.radius)
 
+PURSUE_POUNCE_COS = 0.966 # This is cos(10 degrees)
+PURSUE_POUNCE_DISTANCE = 100.0
+class Pursue(SteeringBehaviour):
+    def __init__(self, owner, prey, pcos=PURSUE_POUNCE_COS, pdist=PURSUE_POUNCE_DISTANCE):
+        SteeringBehaviour.__init__(self, owner)
+        """PURSUE a moving object.
 
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            prey (BasePointMass2d): The object we're pursuing.
+            pcos (float, optional): Cosine of the pounce angle, see notes.
+            pdist (float, optional): Pounce distance, see notes.
+
+        Notes:
+            If the prey is heading our way (we are within a certain angle of
+            the prey's heading) and within a certain distance, simply "pounce"
+            on the prey by SEEKing to its current position. Otherwise, predict
+            the future position of they prey, based on current velocities,
+            and SEEK to that location.
+        """
+        self.prey = prey
+        self.pcos = pcos
+        self.pdist_sq = pdist**2
+
+    def force(self):
+        owner = self.owner
+        prey = self.prey
+        offset = prey.pos - owner.pos
+        dsq = offset.sqnorm()
+        # If prey is close and COMING RIGHT FOR US!!!, target prey's position.
+        # The angle computation assumes prey.front is a unit vector.
+        if dsq < self.pdist_sq and offset * prey.front < -self.pcos * sqrt(dsq):
+            target = prey.pos
+            targetvel = (target - owner.pos)
+        # Otherwise, predict the future position of prey, assuming it will keep
+        # a constant velocity.
+        else:
+            ptime = sqrt(dsq)/(owner.maxspeed + prey.vel.norm())
+            target = ptime * prey.vel + prey.pos
+        # Now SEEK to the target position
+        targetvel = (target - owner.pos)
+        targetvel.scale_to(owner.maxspeed)
+        return targetvel - owner.vel
+
+EVADE_PANIC_DIST = 160.0
+class Evade(SteeringBehaviour):
+    def __init__(self, owner, predator, panic_dist=EVADE_PANIC_DIST):
+        """EVADE a moving object.
+
+            Args:
+                owner (SimpleVehicle2d): The vehicle computing this force.
+                predator (BasePointMass2d): The object we're evading.
+                panic_dist (float): Ignore the predator beyond this distance.
+
+            Notes:
+                If the prey is heading our way (we are within a certain angle of
+                the prey's heading) and within a certain distance, simply "pounce"
+                on the prey by SEEKing to its current position. Otherwise, predict
+                the future position of they prey, based on current velocities,
+                and SEEK to that location.
+        """
+        SteeringBehaviour.__init__(self, owner)
+        self.predator = predator
+        self.panic_sq = panic_dist**2
+
+    def force(self):
+        owner = self.owner
+        predator = self.predator
+        offset = predator.pos - owner.pos
+        if offset.sqnorm() >= self.panic_sq:
+            return ZERO_VECTOR
+
+        # Otherwise, predict the future position of predator, assuming it will
+        # keep a constant velocity. Just like PURSUE (without the pounce).
+        ptime = offset.norm()/(owner.maxspeed + predator.vel.norm())
+        # Now FLEE from the target position
+        target = ptime * predator.vel + predator.pos
+        targetvel = (owner.pos - target)
+        targetvel.scale_to(owner.maxspeed)
+        return targetvel - owner.vel
 
 
 ##############################################################################
@@ -394,66 +473,6 @@ class Navigator(object):
 
 
 
-
-
-def force_pursue(owner, prey):
-    """Steering force for PURSUE behaviour.
-
-    Similar to SEEK, but lead the prey by estimating its future location,
-    based on current velocities.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    prey: BasePointMass2d
-        The vehicle that owner will pursue.
-    """
-    prey_offset = prey.pos - owner.pos
-    # If prey is in front and moving our way, SEEK to prey's position
-    # Compute this using dot products; constant below is cos(10 degrees)
-    # TODO: Test this and allow for angles other than 10 degrees
-    if prey_offset * prey.front < -0.966 * prey_offset.norm():
-        return force_seek(owner, prey.pos)
-
-    # Otherwise, predict the future position of prey, assuming it has a
-    # constant velocity. Prediction time is the distance to prey, divided
-    # by the sum of our max speed and prey's current speed.
-    ptime = prey_offset.norm()/(owner.maxspeed + prey.vel.norm())
-    return force_seek(owner, prey.vel.scm(ptime) + prey.pos)
-
-def activate_pursue(steering, prey):
-    """Activate PURSUE behaviour."""
-    # TODO: Error checking here.
-    steering.targets['PURSUE'] = (prey,)
-    return True
-
-def force_evade(owner, predator):
-    """Steering force for EVADE behaviour.
-
-    Similar to FLEE, but try to get away from the predicted future position
-    of the predator. Predators far away are ignored, EVADE_PANIC_SQ is used
-    to control the panic distance passed to FLEE.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    predator: BasePointMass2d
-        The vehicle that owner will pursue.
-    """
-    predator_offset = predator.pos - owner.pos
-    # Predict the future position of predator, assuming it has a constant
-    # velocity. Prediction time is the distance to predator divided
-    # by the sum of our max speed and predator's current speed.
-    ptime = predator_offset.norm()/(owner.maxspeed + predator.vel.norm())
-    return force_flee(owner, predator.vel.scm(ptime) + predator.pos, EVADE_PANIC_SQ)
-
-def activate_evade(steering, predator):
-    """Activate EVADE behaviour."""
-    # TODO: Error checking here.
-    steering.targets['EVADE'] = (predator,)
-    return True
 
 def force_takecover(owner, target, obs_list, max_range, stalk=False):
     """Steering force for TAKECOVER behind obstacle.
@@ -1238,28 +1257,28 @@ class SteeringBehavior(object):
                         neighbor_list.append(other)
         owner.neighbor_list = neighbor_list
 
-    def compute_force_simple(self):
-        """Compute steering force using all currently-active behaviors.
-
-        Returns
-        -------
-        Point2d: Steering force.
-
-        Note
-        ----
-        This considers all active behaviours, but will still limit the final
-        force vector's magnitude to the owner's maxforce.
-        """
-        self.steering_force.zero()
-        owner = self.vehicle
-        # If any flocking is active, determine neighbors first
-        if self.flocking is True:
-            self.flag_neighbor_vehicles(self.flockmates)
-        # Iterate over active behaviours and accumulate force from each
-        for (behaviour, targets) in self.targets.iteritems():
-            self.steering_force += FORCE_FNC[behaviour](owner, *targets)
-        self.steering_force.truncate(owner.maxforce)
-        return self.steering_force
+#    def compute_force_simple(self):
+#        """Compute steering force using all currently-active behaviors.
+#
+#        Returns
+#        -------
+#        Point2d: Steering force.
+#
+#        Note
+#        ----
+#        This considers all active behaviours, but will still limit the final
+#        force vector's magnitude to the owner's maxforce.
+#        """
+#        self.steering_force.zero()
+#        owner = self.vehicle
+#        # If any flocking is active, determine neighbors first
+#        if self.flocking is True:
+#            self.flag_neighbor_vehicles(self.flockmates)
+#        # Iterate over active behaviours and accumulate force from each
+#        for (behaviour, targets) in self.targets.iteritems():
+#            self.steering_force += FORCE_FNC[behaviour](owner, *targets)
+#        self.steering_force.truncate(owner.maxforce)
+#        return self.steering_force
 
     def set_priorities(self):
         """Create a prioritized list of steering behaviours for later use."""

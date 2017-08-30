@@ -25,7 +25,7 @@ from vehicle2d import BaseWall2d, SimpleObstacle2d
 
 ZERO_VECTOR = Point2d(0,0)
 
-from steering import Navigator, Seek, Flee, Arrive, ObstacleAvoid, WallAvoid, Wander
+import steering
 
 if __name__ == "__main__":
     pygame.init()
@@ -40,7 +40,7 @@ if __name__ == "__main__":
     UPDATE_SPEED = 0.2
 
     # Number of vehicles and obstacles
-    numveh = 1
+    numveh = 2
     numtargs = numveh
     numobs = 16
     total = numveh + numtargs + numobs
@@ -51,6 +51,7 @@ if __name__ == "__main__":
 
     # Load vehicle images
     img[0], rec[0] = load_pygame_image('../images/gpig.png', -1)
+    img[1], rec[1] = load_pygame_image('../images/ypig.png', -1)
 
     # Steering behaviour target images (generated here)
     for i in range(numveh, 2*numveh):
@@ -69,18 +70,19 @@ if __name__ == "__main__":
 
     # Array of vehicles and associated pygame sprites
     green = BasePointMass2d(pos[0], 50, vel, (img[0], rec[0]))
-    vehicles = [green]
-    obj = [green]
-    rgroup = [green.sprite]
+    yellow = BasePointMass2d(pos[1], 50, vel, (img[1], rec[1]))
+    vehicles = [green, yellow]
+    obj = [green, yellow]
+    rgroup = [green.sprite, yellow.sprite]
 
-    # Steering behaviour targets (implemented as vehicles for later use...)
-    for i in range(numveh, 2*numveh):
-        x_new = randint(30, sc_width-30)
-        y_new = randint(30, sc_height-30)
-        new_pos = Point2d(x_new,y_new)
-        target = BasePointMass2d(new_pos, 10, ZERO_VECTOR, (img[i], rec[i]))
-        obj.append(target)
-        rgroup.append(target.sprite)
+#    # Steering behaviour targets (implemented as vehicles for later use...)
+#    for i in range(numveh, 2*numveh):
+#        x_new = randint(30, sc_width-30)
+#        y_new = randint(30, sc_height-30)
+#        new_pos = Point2d(x_new,y_new)
+#        target = BasePointMass2d(new_pos, 10, ZERO_VECTOR, (img[i], rec[i]))
+#        obj.append(target)
+#        rgroup.append(target.sprite)
 
     # Static obstacles for pygame (randomly-generated positions)
     yoffset = sc_height//(numobs+1)
@@ -114,15 +116,26 @@ if __name__ == "__main__":
 #        obj[i].steering.set_target(AVOID=obslist, WALLAVOID=[30, wall_list])
     ### End of vehicle behavior ###
 
-    # Green (for demo)
-    green_nav = Navigator(green)
-    demo_beh = Wander(green)
-    green_nav.active_behaviours.append(demo_beh)
-    newavoid = ObstacleAvoid(green, obslist)
-    green_nav.active_behaviours.append(newavoid)
-    wallavoid = WallAvoid(green, 30.0, wall_list)
-    green_nav.active_behaviours.append(wallavoid)
+    # Green (prey demo)
+    green_nav = steering.Navigator(green)
+    demo_behg = steering.Evade(green, yellow)
+    green_nav.active_behaviours.append(demo_behg)
+    newavoidg = steering.ObstacleAvoid(green, obslist)
+    green_nav.active_behaviours.append(newavoidg)
+    wallavoidg = steering.WallAvoid(green, 30.0, wall_list)
+    green_nav.active_behaviours.append(wallavoidg)
+    wanderg = steering.Wander(green)
+    green_nav.active_behaviours.append(wanderg)
 
+    # Yellow (predator for demo)
+    yellow_nav = steering.Navigator(yellow)
+    demo_behy = steering.Pursue(yellow, green)
+    yellow_nav.active_behaviours.append(demo_behy)
+    newavoidy = steering.ObstacleAvoid(yellow, obslist)
+    yellow_nav.active_behaviours.append(newavoidy)
+    wallavoidy = steering.WallAvoid(yellow, 30.0, wall_list)
+    yellow_nav.active_behaviours.append(wallavoidy)
+    
     ### Main loop ###
     ticks = 0
     TARGET_FREQ = 100
@@ -132,21 +145,9 @@ if __name__ == "__main__":
                 pygame.quit()
                 sys.exit()
 
-        # Update steering targets every so often
-        ticks += 1
-        if ticks == TARGET_FREQ:
-            # Green target
-            x_new = randint(30, sc_width-30)
-            y_new = randint(30, sc_height-30)
-            new_pos = Point2d(x_new,y_new)
-            obj[1].pos = new_pos
-            #del green_nav.active_behaviours[0]
-            #new_beh = Flee(green, new_pos)
-            #green_nav.active_behaviours.insert(0, new_beh)
-            ticks = 0
-
-        # Update Vehicles (via manually calling each move() method)
-        force = green_nav.update()
+        # Update Vehicles via their Navigator objects
+        green_nav.update()
+        yellow_nav.update() 
 
         # Update Sprites (via pygame sprite group update)
         allsprites.update(UPDATE_SPEED)
