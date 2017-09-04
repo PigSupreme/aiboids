@@ -9,4 +9,5 @@ AiBoids Python
    intro
    Generic Vector Code <vpoints>
    Entities and Messaging <base_entity>
-   Genertic State Machine Code <statemachine>
+   Generic State Machine Code <statemachine>
+   demos/demos

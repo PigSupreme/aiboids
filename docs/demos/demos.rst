@@ -1,0 +1,35 @@
+WestWorld3 StateMachine Demo
+============================
+
+.. automodule:: ww3
+
+Game Data
+---------
+
+.. automodule:: gamedata
+
+Miner Class
+-----------
+
+.. automodule:: ent_miner
+
+Miner State Events
+------------------
+
+.. include:: miner-states.txt
+
+Wife Class
+----------
+
+.. automodule:: ent_wife
+
+Wife State Events
+-----------------
+
+.. include:: wife-states.txt
+
+Sample Run
+----------
+
+.. literalinclude:: westworld-run.txt
+

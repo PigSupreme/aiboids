@@ -70,7 +70,7 @@ class BaseEntity(object):
         with deleting/removing entities from the registry.
     """
 
-    # TODO:
+    # TODO: Implement this better.
     _INVALID_ID = 'INVALID_ENTITY'
     _registry = {_INVALID_ID: None}
 

@@ -1,0 +1,72 @@
+Auto-generated from event docstrings.
+
+WIFE_GLOBAL.on_enter() docstring:
+ Check that my spouse is in the game world.
+
+WIFE_GLOBAL.on_execute() docstring:
+ If I'm not in the YARD, 1 in 3 chance of a goat appearing.
+
+    StateChange:
+        Goat appears -> CHASE_GOAT
+
+    TODO: Once we have an actual Goat, move state change logic to a more
+    appropriate place (probably on_msg).
+    
+
+WIFE_GLOBAL.on_msg() docstring:
+ If my spouse gets home, start cooking stew.
+
+    Messages:
+        * MINER_HOME: If from my spouse, change state -> COOK_STEW
+    
+
+DO_HOUSEWORK.on_enter() docstring:
+ Housework is done at the SHACK only; make sure I'm there.
+
+DO_HOUSEWORK.on_execute() docstring:
+ "...and sing while doing the housework, obviously.
+
+COOK_STEW.on_enter() docstring:
+ Go home and start cooking, if my spouse is still there.
+
+COOK_STEW.on_execute() docstring:
+ Keep an eye on the stew, if it's still cooking.
+
+    StateChange:
+        stew_is_on == False -> revert state
+
+    It's possible that Elsa got distracted somehow, and the stew was never
+    started. If this happens, just go back to the previous state.
+    
+
+COOK_STEW.on_msg() docstring:
+ Listen for STEW_READY and notify my spouse.
+
+    Messages:
+        * STEW_READY: change state -> EAT_STEW
+    
+
+EAT_STEW.on_enter() docstring:
+ Make sure I'm actually at home.
+
+EAT_STEW.on_execute() docstring:
+ Eat and then go back to housework.
+
+    StateChange:
+        * update(1) -> DO_HOUSEWORK
+    
+
+CHASE_GOAT.on_enter() docstring:
+ If not already in the YARD, move there to chase that goat!
+
+CHASE_GOAT.on_execute() docstring:
+ Attempt to shoo the goat.
+
+    StateChange:
+        Goat shooed -> revert state
+
+    TODO: There's no actual Goat; we just fake it with Elsa's code for now.
+    
+
+CHASE_GOAT.on_msg() docstring:
+ Busy chasing the goat, so forward all messages to future self.
