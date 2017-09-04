@@ -42,8 +42,8 @@ from __future__ import print_function
 from __future__ import division
 
 from sys import path
-path.extend(['../vpoints'])
-from point2d import Point2d
+path.append('..')
+from aiboids.point2d import Point2d
 
 import logging
 

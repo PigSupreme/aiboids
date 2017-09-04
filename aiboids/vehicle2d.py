@@ -22,11 +22,11 @@ except ImportError:
 
 INF = float('inf')
 
-from point2d import Point2d
+from aiboids.point2d import Point2d
 
-from steering import SteeringBehavior
+from aiboids.steering import SteeringBehavior
 
-from steering_constants import BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS
+from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS
 
 # Point2d functions return radians, but pygame wants degrees. The negative
 # is needed since y coordinates increase downwards on screen. Multiply a
