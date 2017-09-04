@@ -307,7 +307,7 @@ class WallAvoid(SteeringBehaviour):
         self.whisker_num = 3
         self.walls = wall_list
 
-    def force(self):#owner, whisk_units, whisk_lens, wall_list):
+    def force(self):
 
         owner = self.owner
 
@@ -353,6 +353,7 @@ class WallAvoid(SteeringBehaviour):
 
         # Scale by owner radius; bigger objects should tend to stay away
         return result.scm(owner.radius)
+
 
 PURSUE_POUNCE_COS = 0.966 # This is cos(10 degrees)
 PURSUE_POUNCE_DISTANCE = 100.0

@@ -1,7 +1,7 @@
 WestWorld3 StateMachine Demo
 ============================
 
-.. automodule:: ww3
+.. automodule:: westworld3
 
 Game Data
 ---------
