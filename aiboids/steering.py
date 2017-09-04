@@ -202,10 +202,10 @@ class Wander(SteeringBehaviour):
 
     WANDER projects an imaginary circle in directly front of the owner and
     will SEEK towards a randomly-moving target on that circle. The center and
-    radius of this circle are determined by _distance_ and _radius_.
+    radius of this circle are determined by *distance* and *radius*.
 
     We displace the target point each update by a random vector (whose size is
-    limited by _jitter_) and rescale so the target remains on our circle.
+    limited by *jitter*) and rescale so the target remains on our circle.
     """
     def __init__(self, owner, distance=WANDER_DISTANCE, radius=WANDER_RADIUS, jitter=WANDER_JITTER):
         SteeringBehaviour.__init__(self, owner)
@@ -231,7 +231,7 @@ class ObstacleAvoid(SteeringBehaviour):
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
-        obs_list (list of SimpleObstacle2d): Obstacles to check for avoidance.
+        obs_list (list, SimpleObstacle2d): Obstacles to check for avoidance.
 
     This projects a box in front of the owner and tries to find an obstacle
     for which collision is imminent (not always the closest obstacle). The
@@ -287,7 +287,7 @@ class WallAvoid(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         front_length (float): Length of the forward whisker.
-        wall_list (list of BaseWall2d): List of walls to test against.
+        wall_list (list, BaseWall2d): List of walls to test against.
 
     This uses a virtual whisker in front of the vehicle, and two side
     whiskers at 45 degrees from the front. The sides are slighly smaller;
@@ -357,23 +357,24 @@ class WallAvoid(SteeringBehaviour):
 PURSUE_POUNCE_COS = 0.966 # This is cos(10 degrees)
 PURSUE_POUNCE_DISTANCE = 100.0
 class Pursue(SteeringBehaviour):
+    """PURSUE a moving object.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        prey (BasePointMass2d): The object we're pursuing.
+        pcos (float, optional): Cosine of the pounce angle, see notes.
+        pdist (float, optional): Pounce distance, see notes.
+
+    Notes:
+        If the prey is heading our way (we are within a certain angle of
+        the prey's heading) and within a certain distance, simply "pounce"
+        on the prey by SEEKing to its current position. Otherwise, predict
+        the future position of they prey, based on current velocities,
+        and SEEK to that location.
+    """
     def __init__(self, owner, prey, pcos=PURSUE_POUNCE_COS, pdist=PURSUE_POUNCE_DISTANCE):
         SteeringBehaviour.__init__(self, owner)
-        """PURSUE a moving object.
 
-        Args:
-            owner (SimpleVehicle2d): The vehicle computing this force.
-            prey (BasePointMass2d): The object we're pursuing.
-            pcos (float, optional): Cosine of the pounce angle, see notes.
-            pdist (float, optional): Pounce distance, see notes.
-
-        Notes:
-            If the prey is heading our way (we are within a certain angle of
-            the prey's heading) and within a certain distance, simply "pounce"
-            on the prey by SEEKing to its current position. Otherwise, predict
-            the future position of they prey, based on current velocities,
-            and SEEK to that location.
-        """
         self.prey = prey
         self.pcos = pcos
         self.pdist_sq = pdist**2
@@ -398,23 +399,62 @@ class Pursue(SteeringBehaviour):
         targetvel.scale_to(owner.maxspeed)
         return targetvel - owner.vel
 
+
+FOLLOW_HESITANCE = 2.0
+class Follow(SteeringBehaviour):
+    """Attempt to FOLLOW a leader at some fixed offset.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        leader (BasePointMass2d): The object to be followed.
+        offset (Point2d):  Offset from leader. Given in the leader's local
+            coordinate frame, with front = +x.
+    """
+    def __init__(self, owner, leader, offset, hesitance=FOLLOW_HESITANCE):
+        SteeringBehaviour.__init__(self, owner)
+        self.leader = leader
+        self.offset = offset
+        self.hesistance = hesitance
+
+    def force(self):
+        owner = self.owner
+        leader = self.leader
+        offset = self.offset
+        target_pos = leader.pos + leader.front.scm(offset[0]) + leader.left.scm(offset[1])
+        diff = target_pos - self.owner.pos
+        ptime = diff.norm() / (owner.maxspeed + leader.vel.norm())
+        target_pos += ptime* leader.vel
+
+        # Now ARRIVE at the target position
+        offset = (target_pos - owner.pos)
+        dist = offset.norm()
+        if dist > 0:
+            speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
+            if speed > owner.maxspeed:
+                speed = owner.maxspeed
+            targetvel = (speed/dist)*offset
+            return targetvel - owner.vel
+        else:
+            return ZERO_VECTOR
+
 EVADE_PANIC_DIST = 160.0
 class Evade(SteeringBehaviour):
+    """EVADE a moving object.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            predator (BasePointMass2d): The object we're evading.
+            panic_dist (float): Ignore the predator beyond this distance.
+
+        Notes:
+            If the prey is heading our way (we are within a certain angle of
+            the prey's heading) and within a certain distance, simply "pounce"
+            on the prey by SEEKing to its current position. Otherwise, predict
+            the future position of they prey, based on current velocities,
+            and SEEK to that location.
+    """
     def __init__(self, owner, predator, panic_dist=EVADE_PANIC_DIST):
-        """EVADE a moving object.
 
-            Args:
-                owner (SimpleVehicle2d): The vehicle computing this force.
-                predator (BasePointMass2d): The object we're evading.
-                panic_dist (float): Ignore the predator beyond this distance.
-
-            Notes:
-                If the prey is heading our way (we are within a certain angle of
-                the prey's heading) and within a certain distance, simply "pounce"
-                on the prey by SEEKing to its current position. Otherwise, predict
-                the future position of they prey, based on current velocities,
-                and SEEK to that location.
-        """
         SteeringBehaviour.__init__(self, owner)
         self.predator = predator
         self.panic_sq = panic_dist**2
@@ -434,6 +474,78 @@ class Evade(SteeringBehaviour):
         targetvel = (owner.pos - target)
         targetvel.scale_to(owner.maxspeed)
         return targetvel - owner.vel
+
+
+GUARD_HESITANCE = 1.0
+class Guard(SteeringBehaviour):
+    """GUARD one object from another by moving between them.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        guard_this (BasePointMass2d): The object to be guarded.
+        guard_from (BasePointMass2d): The object to guard against.
+        aggro (float): Value from 0 to 1 for aggressiveness; see below.
+
+    This is a more general version of INTERPOSE. The vehicle attempts to
+    keep itself between *guard_this* and *guard_from*, at a relative
+    distance controlled by *aggro*. An *aggro* near zero will position
+    close to *guard_this*; near 1.0 will position close to *guard_from*.
+
+    Note:
+        This allows setting *aggro* outside of the interval [0,1]; as the
+        formula for computing position is the standard parameterization of
+        the line segment from *guard_this* to *guard_from*.
+    """
+    def __init__(self, owner, guard_this, guard_from, aggro=0.5):
+
+        SteeringBehaviour.__init__(self, owner)
+        self.guard_this = guard_this
+        self.guard_from = guard_from
+        self.aggro = aggro
+
+    def force(self):
+        # Find the desired position between the two objects right now
+        owner = self.owner
+        this_pos = self.guard_this.pos
+        from_pos = self.guard_from.pos
+        want_pos = this_pos + self.aggro*(from_pos - this_pos)
+
+        # Predict future positions based on owner's time to that position
+        est_time = (want_pos - owner.pos).norm()/owner.maxspeed
+        this_pos += est_time * self.guard_this.vel
+        from_pos += est_time * self.guard_from.vel
+
+        # Now ARRIVE at a spot between the predicted positions
+        want_pos = this_pos + self.aggro* (from_pos - this_pos)
+        offset = (want_pos - owner.pos)
+        dist = offset.norm()
+        if dist > 0:
+            speed = dist / (ARRIVE_DECEL_TWEAK * GUARD_HESITANCE)
+            if speed > owner.maxspeed:
+                speed = owner.maxspeed
+            targetvel = (speed/dist)*offset
+            return targetvel - owner.vel
+        else:
+            return ZERO_VECTOR
+
+class Brake(SteeringBehaviour):
+    def __init__(self, owner, decay=0.5):
+        """Steering force opposite of current forward velocity.
+
+        Args:
+            owner (SimpleVehicle2d): The vehicle computing this force.
+            decay (float): Discrete exponential decay constant; 0 < decay < 1.
+
+        Warning:
+            Haven't sufficiently tested this. Values of decay close to 0 should
+            give more gradual braking; close to 1 should be more severe. The
+            actual performance may depend on delta_t for time.
+        """
+        SteeringBehaviour.__init__(self, owner)
+        self.decay = -decay
+
+    def force(self):
+        return self.decay * self.owner.vel
 
 
 ##############################################################################
@@ -466,6 +578,8 @@ class Navigator(object):
         # Iterate over active behaviours and accumulate force from each
         for behaviour in self.active_behaviours:
             self.steering_force += behaviour.force()
+
+
 
 ############################################################################
 ############################################################################
@@ -527,97 +641,6 @@ def activate_takecover(steering, target):
     steering.targets['TAKECOVER'] = target
     return True
 
-
-def force_guard(owner, guard_this, guard_from, aggro):
-    """Steering force for GUARD behavior.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    guard_this: BasePointMass2d
-        The target that owner is guarding.
-    guard_from: BasePointMass2d
-        The target that owner is guarding against.
-    aggro: float
-        Value from 0 to 1; controls aggressiveness (see notes below)
-
-    Notes
-    -----
-    This is a more general version of INTERPOSE. The vehicle will attempt
-    to position itself between guard_this and guard_from, at a relative
-    distance controlled by aggro. Setting aggro near zero will position near
-    guard_this; aggro near 1.0 will position near guard_from.
-
-    The formula is the standard parameterization of a line segment, so we can
-    actually set aggro outside of the unit interval.
-    """
-
-    # Find the desired position between the two objects as of now:
-    target_pos = guard_this.pos
-    from_pos = guard_from.pos
-    want_pos = target_pos + (from_pos - target_pos).scm(aggro)
-
-    # Predict future positions based on owner's distance/maxspeed to want_pos
-    est_time = (want_pos - owner.pos).norm()/owner.maxspeed
-    target_pos += guard_this.vel.scm(est_time)
-    from_pos += guard_from.vel.scm(est_time)
-    want_pos = target_pos + (from_pos - target_pos).scm(aggro)
-
-    return force_arrive(owner, want_pos, 1.0)
-
-def activate_guard(steering, target):
-    """Activate GUARD behaviour."""
-    steering.targets['GUARD'] = target
-    # TODO: Check for errors
-    return True
-
-def force_follow(owner, leader, offset):
-    """Steering force for FOLLOW the leader at some offset.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    leader: BasePointMass2d
-        The lead vehicle that the owner is following.
-    offset: Point2d
-        Offset from leader (in leader's local coordinates, front = +x)
-    """
-
-    target_pos = leader.pos + leader.front.scm(offset[0]) + leader.left.scm(offset[1])
-    diff = target_pos - owner.pos
-    ptime = diff.norm() / (owner.maxspeed + leader.vel.norm())
-    target_pos += leader.vel.scm(ptime)
-    return force_arrive(owner, target_pos, FOLLOW_ARRIVE_HESITANCE)
-
-def activate_follow(steering, target):
-    """Activate FOLLOW behaviour."""
-    steering.targets['FOLLOW'] = target
-    # TODO: Check for errors
-    return True
-
-def force_brake(owner, decay=0.5):
-    """Steering force oppoisite of current forward velocity.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    decay: float
-        Discrete exponential decay constant for speed; 0 < decay < 1.
-    """
-    speed = owner.vel.norm()
-    return owner.vel.scm(-decay * speed)
-
-def activate_brake(steering, target):
-    """Activate BRAKE behaviour."""
-    # TODO: Error checking here.
-    if 0 < target < 1:
-        steering.targets['BRAKE'] = (target,)
-    else:
-        steering.targets['BRAKE'] = (0.5,)
-    return True
 
 ##############################################
 ### Path-related behaviours start here     ###
