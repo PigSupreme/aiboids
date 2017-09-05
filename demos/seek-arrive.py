@@ -11,8 +11,6 @@ import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint, shuffle
 
-TARGET_FREQ = 500
-
 INF = float('inf')
 
 # Note: Adjust this depending on where this file ends up.
@@ -94,39 +92,27 @@ if __name__ == "__main__":
                  BaseWall2d((sc_width//2, sc_height-10), sc_width-20, 4, Point2d(0,-1)),
                  BaseWall2d((10, sc_height//2), sc_height-20, 4, Point2d(1,0)),
                  BaseWall2d((sc_width-10,sc_height//2), sc_height-20, 4, Point2d(-1,0)))
+    wall_list = []
     for wall in wall_list:
         rgroup.append(wall.sprite)
 
     # Set-up pygame rendering
     allsprites = pygame.sprite.RenderPlain(rgroup)
 
+    # All vehicles avoid obstacles and walls
+    for veh in vehicles:
+        steering.Navigator(veh)
+        veh.navigator.set_steering('OBSTACLEAVOID', obslist)
+        veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
+
     # Green (SEEK demo)
-    green_nav = steering.Navigator(green)
-    newseek = steering.Seek(green, targs[0].pos)
-    green_nav.active_behaviours= [newseek]
-    newavoidg = steering.ObstacleAvoid(green, obslist)
-    green_nav.active_behaviours.append(newavoidg)
-    wallavoidg = steering.WallAvoid(green, 30.0, wall_list)
-    green_nav.active_behaviours.append(wallavoidg)
+    green.navigator.set_steering('SEEK', targs[0].pos)
 
     # Yellow (ARRIVE demo)
-    yellow_nav = steering.Navigator(yellow)
-    demo_behy = steering.Arrive(yellow, targs[1].pos)
-    yellow_nav.active_behaviours.append(demo_behy)
-    newavoidy = steering.ObstacleAvoid(yellow, obslist)
-    yellow_nav.active_behaviours.append(newavoidy)
-    wallavoidy = steering.WallAvoid(yellow, 30.0, wall_list)
-    yellow_nav.active_behaviours.append(wallavoidy)
+    yellow.navigator.set_steering('ARRIVE', targs[1].pos)
 
-    # Yellow (ARRIVE demo)
-    red_nav = steering.Navigator(red)
-    demo_behr = steering.Arrive(red, targs[2].pos, 8.0)
-    red_nav.active_behaviours.append(demo_behr)
-    newavoidr = steering.ObstacleAvoid(red, obslist)
-    red_nav.active_behaviours.append(newavoidr)
-    wallavoidr = steering.WallAvoid(red, 40.0, wall_list)
-    red_nav.active_behaviours.append(wallavoidr)
-
+    # Red (ARRIVE with hesitance)
+    red.navigator.set_steering('ARRIVE', targs[2].pos, 8.0)
 
     ### Main loop ###
     ticks = 0
@@ -137,10 +123,9 @@ if __name__ == "__main__":
                 pygame.quit()
                 sys.exit()
 
-        # Update Vehicles via their Navigator objects
-        green_nav.update()
-        yellow_nav.update()
-        red_nav.update()
+        # Update Vehicles via their Navigators (this includes movement)
+        for veh in vehicles:
+            veh.navigator.update()
 
         # Update steering targets every so often
         ticks += 1
@@ -148,23 +133,17 @@ if __name__ == "__main__":
             # Green target
             new_pos = Point2d(*randpos())
             targs[0].pos = new_pos
-            del green_nav.active_behaviours[0]
-            newseek = steering.Seek(green, new_pos)
-            green_nav.active_behaviours.insert(0, newseek)
+            green.navigator.set_steering('SEEK', targs[0].pos)
         if ticks == 2*TARGET_FREQ:
             # Yellow target
             new_pos = Point2d(*randpos())
             targs[1].pos = new_pos
-            del yellow_nav.active_behaviours[0]
-            newseek = steering.Arrive(yellow, new_pos)
-            yellow_nav.active_behaviours.insert(0, newseek)
+            yellow.navigator.set_steering('ARRIVE', targs[1].pos)
         if ticks == 3*TARGET_FREQ:
             # Red target
             new_pos = Point2d(*randpos())
             targs[2].pos = new_pos
-            del red_nav.active_behaviours[0]
-            newseek = steering.Arrive(red, new_pos, 8.0)
-            red_nav.active_behaviours.insert(0, newseek)
+            red.navigator.set_steering('ARRIVE', targs[2].pos, 8.0)
             ticks = 0
 
         # Update Sprites (via pygame sprite group update)

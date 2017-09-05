@@ -181,10 +181,10 @@ class BasePointMass2d(object):
     PointMass2dSprite class above (derived from pygame.sprite.Sprite), but
     can be overridden by changing the _spriteclass attribute.
     """
-    
+
     _spriteclass = PointMass2dSprite
     """Default sprite class to use for rendering."""
-    
+
     _PHYSICS_DEFAULTS = copy.copy(BASEPOINTMASS2D_DEFAULTS)
 
     def __init__(self, position, radius, velocity, spritedata=None):
@@ -294,7 +294,7 @@ class SimpleObstacle2d(BasePointMass2d):
 
     def move(self, delta_t=1.0):
         pass
-        
+
 class SimpleRigidBody2d(BasePointMass2d):
 
     """Moving object with linear and angular motion, with optional sprite.
@@ -305,10 +305,10 @@ class SimpleRigidBody2d(BasePointMass2d):
     Although this isn't really a point mass in the physical sense, we inherit
     from BasePointMass2d in order to avoid duplicating or refactoring code.
     """
-    
-    # Additional defaults are added to parent class (BasePointMass2d) 
+
+    # Additional defaults are added to parent class (BasePointMass2d)
     BasePointMass2d._PHYSICS_DEFAULTS.update(**SIMPLERIGIDBODY2D_DEFAULTS)
-    
+
     def __init__(self, position, radius, velocity, beta, omega, spritedata=None):
 
         # Use parent class for non-rotational stuff
@@ -386,6 +386,6 @@ def set_physics_defaults(**kwargs):
             BasePointMass2d._PHYSICS_DEFAULTS[default] = value
         else:
             print('Warning: Physics default %s is unavailable.' % default)
-            
+
 if __name__ == "__main__":
     print("Two-Dimensional Vehicle/Obstacle Classes and Functions. Import this elsewhere.")

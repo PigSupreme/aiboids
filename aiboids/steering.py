@@ -551,17 +551,44 @@ class Brake(SteeringBehaviour):
 
 ##############################################################################
 class Navigator(object):
-    """Helper class for managing steering behaviours."""
-    def __init__(self, vehicle):
+    """Helper class for managing steering behaviours.
 
+    Args:
+        vehicle (SimpleVehicle2d): The vehicle to be steered."""
+
+    # Dictionary of defined behaviours for later use
+    _steering = {beh.__name__.upper(): beh for beh in SteeringBehaviour.__subclasses__()}
+
+    def __init__(self, vehicle):
         self.vehicle = vehicle
         self.steering_force = Point2d(0,0)
         self.active_behaviours = list()
-        # TODO: Give the owner vehicle a reference to its Navigator
+        self.force_update = Navigator.compute_force_simple
+        vehicle.navigator = self
+        # TODO: Give vehicle convenient access to navigator interface?
+
+    def set_steering(self, behaviour, *args):
+        """Add a new steering behaviour or change existing targets."""
+        # First make sure that the behaviour is defined.
+        try:
+            steer_class = Navigator._steering[behaviour]
+        except KeyError:
+            print('**WARNING** Behaviour %s is not available.' % behaviour)
+            return False
+        newsteer = Navigator._steering[behaviour](self.vehicle, *args)
+        # If this behaviour is already in use, replace the prior instance
+        # TODO: Check if we need to preserve order (when using budgeted force)
+        #       if not, just append and sort priorities laterr.
+        try:
+            behi = [type(beh) for beh in self.active_behaviours].index(steer_class)
+            self.active_behaviours[behi] = newsteer
+        # Otherwise, just append the new behaviour to the active list
+        except ValueError:
+            self.active_behaviours.append(newsteer)
 
     def update(self, delta_t=1.0):
         # TODO: Option for budgeted force; choose this in __init__()
-        self.compute_force_simple()
+        self.force_update(self)
         self.vehicle.move(delta_t, self.steering_force)
 
     def compute_force_simple(self):
