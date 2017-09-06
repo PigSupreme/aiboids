@@ -1,29 +1,25 @@
 # steering.py
-"""Module containing AiBoid steering behavior functions.
+"""Module containing AiBoid steering behavior functions (and Navigator).
 
-Each type of behaviour needs a force_foo() function to compute the actual
-steering force. The first argument ("owner") is the vehicle that is being
-steered. Any number of additional arguments are permitted. This allows the
-SteeringBehaviour.compute_force functions to automatically call each active
-behaviour's force_foo() function with appropriate arguments.
+Specific steering behaviours should subclass SteeringBehaviour. The __init__()
+method must call *SteeringBehaviour.__init__(self, owner)*, which sets the
+owner (and may do other things in the future). The force() method must take
+*self* as the only argument; this is used by the Navigator class for updates.
+See the Seek class for a simple example.
 
-Each behaviour also needs a activate_foo() function. The first argument
-("steering") is an instance of SteeringBehaviour owned by the given vehicle;
-additional arguments are intended to be stored within the SteeringBehaviour
-instance and then passed to the corresponding force_foo() each update. See
-the SEEK code for a simple example.
+TODO: Fix the rest of the module docstring below, once we've finished changes.
+
+When using budgeted force (the default), we need to know the order in which
+forces are considered. This is currently defined here as PRIORITY_DEFAULTS,
+but we can probably import it from somewhere else, probably from the same place
+as the steering constants. Alternatively, it might be better to import the
+PRIORITY_KEY directly, which is used in the sort.
 
 Many behaviours use constant values, imported from steering_constants.py and
 assigned to local constants within this module. These are chosen based on the
 the physics defaults (also in steering_constants) to give reasonable results,
 but can be overridden with steering.FOO_CONSTANT = new_value. See the sheepdog
-demo for an example of this.
-
-Importing this module will automatically generate a BEHAVIOUR_LIST containing
-all behaviours that follow the conventions above. This makes it very easy to
-add additional behaviours with minimal changes to the existing code (besides
-writing the force/activate functions, SteeringBehaviour.PRIORITY_LIST would
-need to be modified with any new behaviours if we use budgeted force).
+demo for an example of this. [check this]
 
 TODO: set/pause/resume/stop behaviour functions always call set_priorities()
 regardless of whether budgeted force is actually used. Since we're currently
@@ -77,9 +73,27 @@ rand_gen = Random()
 rand_gen.seed()
 rand_uni = lambda x: rand_gen.uniform(-x, x)
 
-###
-###
-###
+# Order in which behaviours are considered when using budgeted force:
+PRIORITY_DEFAULTS = ['BRAKE',
+                     'WALLAVOID',
+                     'OBSTACLEAVOID',
+                     'SEPARATE',
+                     'FLEE',
+                     'EVADE',
+                     'SEEK',
+                     'ARRIVE',
+                     'TAKECOVER',
+                     'PURSUE',
+                     'GUARD',
+                     'FOLLOW',
+                     'WAYPATHRESUME',
+                     'WAYPATHTRAVERSE',
+                     'COHESION',
+                     'ALIGN',
+                     'FLOWFOLLOW',
+                     'WANDER'
+                    ]
+PRIORITY_KEY = lambda x: PRIORITY_DEFAULTS.index(x.__class__.__name__.upper())
 
 class SteeringBehaviour(object):
     """Base class for all steering behaviours.
@@ -96,12 +110,8 @@ class SteeringBehaviour(object):
     def __init__(self, owner):
         self.owner = owner
 
-    def force(self, delta_t):
+    def force(self):
         """Compute the owner's steering force for this behaviour."""
-        raise NotImplementedError
-
-    def set_params(self, *args, **kwargs):
-        """Used by the owner/Navigator to change per-instance values."""
         raise NotImplementedError
 
 
@@ -187,6 +197,7 @@ class Arrive(SteeringBehaviour):
             return targetvel - owner.vel
         else:
             return ZERO_VECTOR
+
 
 WANDER_DISTANCE = 30.0
 WANDER_RADIUS = 25.0
@@ -438,6 +449,7 @@ class Follow(SteeringBehaviour):
         else:
             return ZERO_VECTOR
 
+
 EVADE_PANIC_DIST = 160.0
 class Evade(SteeringBehaviour):
     """EVADE a moving object.
@@ -529,6 +541,7 @@ class Guard(SteeringBehaviour):
         else:
             return ZERO_VECTOR
 
+
 class Brake(SteeringBehaviour):
     def __init__(self, owner, decay=0.5):
         """Steering force opposite of current forward velocity.
@@ -559,13 +572,17 @@ class Navigator(object):
     # Dictionary of defined behaviours for later use
     _steering = {beh.__name__.upper(): beh for beh in SteeringBehaviour.__subclasses__()}
 
-    def __init__(self, vehicle):
+    def __init__(self, vehicle, use_budget=True):
         self.vehicle = vehicle
         self.steering_force = Point2d(0,0)
         self.active_behaviours = list()
-        self.force_update = Navigator.compute_force_simple
+        if use_budget:
+            self.force_update = Navigator.compute_force_budgeted
+        else:
+            self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
-        # TODO: Give vehicle convenient access to navigator interface?
+        # TODO: Give vehicle convenient access to navigator interface,
+        #       such as vehicle.set_steering = self.set_steering(...)
 
     def set_steering(self, behaviour, *args):
         """Add a new steering behaviour or change existing targets."""
@@ -576,15 +593,20 @@ class Navigator(object):
             print('**WARNING** Behaviour %s is not available.' % behaviour)
             return False
         newsteer = Navigator._steering[behaviour](self.vehicle, *args)
-        # If this behaviour is already in use, replace the prior instance
-        # TODO: Check if we need to preserve order (when using budgeted force)
-        #       if not, just append and sort priorities laterr.
+        # If this behaviour is already in use, replace the prior instance.
+        # TODO: We can probably improve this by manually iterating.
         try:
             behi = [type(beh) for beh in self.active_behaviours].index(steer_class)
             self.active_behaviours[behi] = newsteer
-        # Otherwise, just append the new behaviour to the active list
+        # Otherwise, add the new behaviour to the active list, and see below.
         except ValueError:
             self.active_behaviours.append(newsteer)
+            # If we're using budgeted force, this ensures the extended list of
+            # active_behaviours gets sorted by priority before the next update.
+            # Since multiple new behaviours are often added simultaenously,
+            # this ensures we only need a single sort.
+            if self.force_update == Navigator.compute_force_budgeted:
+                self.force_update = Navigator.sort_budget_priorities
 
     def update(self, delta_t=1.0):
         # TODO: Option for budgeted force; choose this in __init__()
@@ -607,7 +629,43 @@ class Navigator(object):
         for behaviour in self.active_behaviours:
             self.steering_force += behaviour.force()
 
+    def compute_force_budgeted(self):
+        """Find prioritized steering force within the vehicle's budget.
 
+        TODO: Vehicle's maxforce is used as the budget. Allow other values?"""
+        # If any flocking is active, determine neighbors first
+        #if self.flocking is True:
+        #    self.flag_neighbor_vehicles(self.flockmates)
+        self.steering_force.zero()
+        budget = self.vehicle.maxforce
+        for behaviour in self.active_behaviours:
+            # If so, call the behaviour's force_ function
+            newforce = behaviour.force()
+            newnorm = newforce.norm()
+            if budget > newnorm:
+                # If there is enough force budget left, continue as usual
+                self.steering_force += newforce
+                budget -= newnorm
+            else:
+                # Scale newforce to remaining budget, apply, and exit
+                newforce.scm(budget/newnorm)
+                self.steering_force += newforce
+                return self.steering_force
+
+        # If any budget is leftover, just return the total force
+        return self.steering_force
+
+    def sort_budget_priorities(self):
+        """Sort our currently-active behaviours by priority; see below.
+
+        This is intended to work with budgeted force. When a new behaviour is
+        added, the Navigator's force_update method is set to this function, and
+        the new list of behaviours gets sorted just before the actual update.
+        One can also call this manually to immediately perform the sort. In any
+        case, the force_update is then rest to compute_force_budgeted.
+        """
+        self.active_behaviours.sort(key=PRIORITY_KEY)
+        self.force_update = Navigator.compute_force_budgeted
 
 ############################################################################
 ############################################################################
