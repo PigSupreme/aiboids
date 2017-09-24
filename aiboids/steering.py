@@ -7,7 +7,15 @@ owner (and may do other things in the future). The force() method must take
 *self* as the only argument; this is used by the Navigator class for updates.
 See the Seek class for a simple example.
 
-TODO: Fix the rest of the module docstring below, once we've finished changes.
+Todo:
+    Replace Point2d.scm() instances by * operator and test.
+
+Todo:
+    Document the default constants. Currently these are just before the class
+    definitions, but they might end up in some other file.
+
+Todo:
+    Fix the rest of the module docstring below, once we've finished changes.
 
 When using budgeted force (the default), we need to know the order in which
 forces are considered. This is currently defined here as PRIORITY_DEFAULTS,
@@ -291,6 +299,81 @@ class ObstacleAvoid(SteeringBehaviour):
             return ZERO_VECTOR
 
 
+TAKECOVER_STALK_COS = SQRT_HALF  # cos(45 degrees)
+TAKECOVER_STALK_DSQ = 100**2
+TAKECOVER_EVADE_MULT = 1.5
+TAKECOVER_ARRIVE_HESITANCE = 1.0
+class TakeCover(SteeringBehaviour):
+    """TAKECOVER from another target vehicle behind a nearby obstacle.
+
+    Owner attempts to find a position that will put an obstacle between itself
+    and some other vehicle. If such a point cannot be found nearby (within
+    max_range of the owner), EVADE the target predator instead.
+
+    If stalk is set to True, the owner will try to hide only when in front of
+    the target and within a certain range. Stalking should be used with other
+    behaviours (e.g., PURSUE) or we get very odd-looking results.
+
+    Todo:
+        Consider moving stalk to a seperate behaviour.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        target (BasePointMass2d): The vehicle we try to hide from.
+        obs_list (list of BasePointMass2d): List of obstacles for hiding.
+        max_range (float): Hiding points further than this value are ignored.
+        stalk (boolean, optional): If True, only hide when we are in front of the target.
+    """
+    def __init__(self, owner, target, obstacle_list, max_range, stalk=False):
+        SteeringBehaviour.__init__(self, owner)
+        self.target = target
+        self.obstacles = tuple(obstacle_list)
+        self.range_sq = max_range**2
+        self.stalk = stalk
+        # Note: This helper instance of EVADE avoids duplicating code here.
+        self.evade_helper = Evade(owner, target, TAKECOVER_EVADE_MULT*max_range)
+        # TODO: ARRIVE needs a fixed target, so it's more trouble than it's
+        # worth to use a helper instance here. If we ever provide an easy way
+        # to switch behaviour targets, it might be worth updating this code and
+        # replace the duplicated ARRIVE code in the force() method.
+        self.hesitance = TAKECOVER_ARRIVE_HESITANCE
+
+    def force(self):
+        # If stalking, exit unless we're close in front of our target.
+        if self.stalk:
+            hide_dir = (self.owner.pos - self.target.pos)
+            if hide_dir.sqnorm() < TAKECOVER_STALK_DSQ:
+                if (hide_dir.unit() * self.target.front) < TAKECOVER_STALK_COS:
+                    return ZERO_VECTOR
+        # Otherwise, find the nearest hiding spot.
+        best_dsq = self.range_sq
+        best_pos = None
+        for obs in self.obstacles:
+            # Hiding point for this obstacle, is directly opposite the
+            # vehicle we're hiding from.
+            hide_dir = (obs.pos - self.target.pos).unit()
+            hide_pos = obs.pos + (obs.radius + self.owner.radius)*hide_dir
+            hide_dsq = (hide_pos - self.owner.pos).sqnorm()
+            if hide_dsq < best_dsq:
+                best_pos = hide_pos
+                best_dsq = hide_dsq
+        # If no nearby hiding spot was found, just EVADE the target.
+        if best_pos is None:
+            return self.evade_helper.force()
+        # Otherwise, ARRIVE at the hiding spot.
+        else:
+            target_offset = (best_pos - self.owner.pos)
+            dist = target_offset.norm()
+            if dist > 0:
+                speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
+                if speed > self.owner.maxspeed:
+                    speed = self.owner.maxspeed
+                targetvel = (speed/dist)*target_offset
+                return targetvel - self.owner.vel
+            else:
+                return ZERO_VECTOR
+
+
 WALLAVOID_SIDE_SCALE = 0.8
 class WallAvoid(SteeringBehaviour):
     """WALLAVOID behaviour with three whiskers.
@@ -363,7 +446,7 @@ class WallAvoid(SteeringBehaviour):
                 result += depth*closest_wall[i].front
 
         # Scale by owner radius; bigger objects should tend to stay away
-        return result.scm(owner.radius)
+        return owner.radius*result
 
 
 PURSUE_POUNCE_COS = 0.966 # This is cos(10 degrees)
@@ -476,9 +559,9 @@ class Evade(SteeringBehaviour):
         owner = self.owner
         predator = self.predator
         offset = predator.pos - owner.pos
+        # Ignore the predator if it's too far away
         if offset.sqnorm() >= self.panic_sq:
             return ZERO_VECTOR
-
         # Otherwise, predict the future position of predator, assuming it will
         # keep a constant velocity. Just like PURSUE (without the pounce).
         ptime = offset.norm()/(owner.maxspeed + predator.vel.norm())
@@ -662,7 +745,7 @@ class Navigator(object):
         added, the Navigator's force_update method is set to this function, and
         the new list of behaviours gets sorted just before the actual update.
         One can also call this manually to immediately perform the sort. In any
-        case, the force_update is then rest to compute_force_budgeted.
+        case, the force_update is then reset to compute_force_budgeted.
         """
         self.active_behaviours.sort(key=PRIORITY_KEY)
         self.force_update = Navigator.compute_force_budgeted
@@ -671,61 +754,6 @@ class Navigator(object):
 ############################################################################
 ############################################################################
 
-
-
-
-def force_takecover(owner, target, obs_list, max_range, stalk=False):
-    """Steering force for TAKECOVER behind obstacle.
-
-    Owner attempts to move to the nearest position that will put an obstacle
-    between itself and the target. If no such points are within max_range,
-    EVADE the predator instead.
-
-    By setting stalk to True, we'll only hide when in front of the target.
-    Stalking allows this vehicle to (somewhat clumsily) sneak up from behind.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    target: BasePointMass2d
-        The vehicle we try to hide from.
-    obs_list: list of BasePointMass2d
-        List of obstacles to check for avoidance.
-    max_range: float
-        Obstacles further than this value are ignored.
-    stalk: boolean
-        If True, only hide when we are in front of the target.
-    """
-
-    # If we're stalking, only hide when we're in front of our target.
-    if stalk:
-        hide_dir = (owner.pos - target.pos)
-        if (hide_dir * target.front)**2 < hide_dir.sqnorm()*TAKECOVER_STALK_T:
-            return ZERO_VECTOR
-
-    best_dsq = max_range*max_range
-    best_pos = None
-    for obs in obs_list:
-        # Find the hiding point for this obstacle
-        hide_dir = (obs.pos - target.pos).unit()
-        hide_pos = obs.pos + hide_dir.scm(obs.radius + owner.radius)
-        hide_dsq = (hide_pos - owner.pos).sqnorm()
-        # Update distance and position if this obstacle is better
-        if hide_dsq < best_dsq:
-            best_pos = hide_pos
-            best_dsq = hide_dsq
-
-    if best_pos is None:
-        return force_evade(owner, target)
-    else:
-        return force_arrive(owner, best_pos, 1.0)
-
-def activate_takecover(steering, target):
-    """Activate TAKECOVER behaviour."""
-    # TODO: Error checking
-    steering.targets['TAKECOVER'] = target
-    return True
 
 
 ##############################################
