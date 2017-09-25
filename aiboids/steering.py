@@ -95,7 +95,7 @@ PRIORITY_DEFAULTS = ['BRAKE',
                      'GUARD',
                      'FOLLOW',
                      'WAYPATHRESUME',
-                     'WAYPATHTRAVERSE',
+                     'WAYPATHVISIT',
                      'COHESION',
                      'ALIGN',
                      'FLOWFOLLOW',
@@ -645,6 +645,257 @@ class Brake(SteeringBehaviour):
         return self.decay * self.owner.vel
 
 
+##############################################
+### Path-related behaviours start here     ###
+##############################################
+PATH_EPSILON_SQ = 10.0**2
+class WaypointPath(object):
+    """Helper class for managing path-related behaviour, using waypoints.
+
+    Args:
+        waypoints (list of Point2d): Non-empty list of waypoints on this path.
+        is_cyclic (boolean): If set to True, path will automatically cycle. See notes.
+
+    Notes:
+        Instances of WaypointPath should be owned by a Navigator instance, but
+        all path-management code is controlled from within this class.
+
+        When using this for vehicle steering, the first waypoint is intended as
+        the starting point of some owner vehicle. The vehicle will *not*
+        automatically return to this point even if is_cyclic is set to True, so
+        add it manually to the end of *waypoints* if a return trip is needed.
+
+    Todo:
+        It may be helpful to rewrite this class as a generator.
+    """
+    def __init__(self, waypoints, is_cyclic=False):
+        self.oldway = waypoints[0]
+        self.waypoints = []
+        prev_wp = self.oldway
+
+        # Include only consecutive waypoints that are far enough apart
+        for wp in waypoints[1:]:
+            if (prev_wp - wp).sqnorm() >= PATH_EPSILON_SQ:
+                self.waypoints.append(wp)
+                prev_wp = wp
+
+        # Compute initial segment, see Notes on returning to first waypoint
+        self.newway = self.waypoints[0]
+        self.wpindex = 0
+
+        # Length of this edge and unit vector (oldway to newway)
+        offset = self.newway - self.oldway
+        self.edgelength = offset.norm()
+        self.edgevector = offset.scm(1/self.edgelength)
+
+        self.is_cyclic = is_cyclic
+
+    def reset_from_position(self, start_pos, do_return=False):
+        """Reset the next waypoint to the start of this path.
+
+        Args:
+            start_pos (Point2d): The new starting point for the path
+            do_return (boolean, optional): If set to True, start_pos becomes
+                the final waypoint. See Notes.
+
+        Notes:
+            As with the __init__() method, start_pos is intended as the current
+            location of some vehicle, and is not explicitly added as the first
+            waypoint. If the path was previously cyclic, we will not return to
+            start_pos by default (but the previous waypoints will still continue
+            to cycle). To override this, set do_return=True. However, start_pos
+            will not be added explicitly is it is within the threshold given by
+            PATH_EPSILON_SQ, because it is close enough to an actual waypoint.
+
+        Todo:
+            Make sure this works for single edges and start_pos close to the
+            the first or last waypoint in a cyclic path.
+        """
+        self.newway = self.waypoints[0]
+        self.wpindex = 0
+        # If we're close to the first waypoint, use that wp as start_pos
+        if (start_pos - self.newway).sqnorm() < PATH_EPSILON_SQ:
+            self.advance()
+        if do_return and (start_pos - self.waypoints[-1]).sqnorm() >= PATH_EPSILON_SQ:
+            self.waypoints.append(start_pos)
+
+    def advance(self):
+        """Update our waypoint to the next one in the path.
+
+        Note:
+            When we advance() from the last waypoint in a non-cyclic path, the
+            value of self.newway is set to None. This can be used elsewhere??
+        """
+        self.oldway = self.newway
+        self.wpindex = self.wpindex + 1
+
+        try:
+            self.newway = self.waypoints[self.wpindex]
+            # Compute new length and unit vector
+            offset = self.newway - self.oldway
+            self.edgelength = offset.norm()
+            self.edgevector = offset.scm(1/self.edgelength)
+
+        # This throws if we are at the last waypoint in the list.
+        except IndexError:
+            if self.is_cyclic:
+                # If cyclic, go back to the first waypoint
+                self.wpindex = 0
+                self.newway = self.waypoints[0]
+                offset = self.newway - self.oldway
+                self.edgelength = offset.norm()
+                self.edgevector = offset.scm(1/self.edgelength)
+            else:
+                self.newway = None
+                self.edgelength = 0
+                self.edgevector = None
+
+    def num_left(self):
+        """Returns the number of waypoints remaining in this path.
+
+        Note:
+            For cyclic paths, we always return the total number of waypoints,
+            regardless of where we are in the list.
+        """
+        if self.is_cyclic:
+            return len(self.waypoints)
+        else:
+            return len(self.waypoints) - self.wpindex
+
+
+WAYPOINT_RADIUS = 10.0
+class WaypathVisit(SteeringBehaviour):
+    """Visit a series of waypoints in order.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        waypath (WaypointPath): The path to be followed.
+        wayradius (float): Waypoint radius; see notes.
+
+    Note:
+        In this version; we merely head towards the next waypoint. If there is
+        only one waypoint left, we ARRIVE at it. Otherwise, we SEEK. A waypoint
+        is visited once the distance to owner is less than *wayradius*.
+
+    Todo:
+        This is less of a behaviour and more of a manager for other behaviours;
+        consider moving its functionality to within the Navigator class.
+    """
+    def __init__(self, owner, waypath, wayradius=WAYPOINT_RADIUS):
+        SteeringBehaviour.__init__(self, owner)
+        # TODO: If waypath has no waypoints left, ARRIVE won't work?
+        self.waypath = waypath
+        self.wprad_sq = wayradius**2
+        if waypath.num_left() <= 1:
+            self.wayforce = Arrive(owner, waypath.newway)
+        else:
+            self.wayforce = Seek(owner, waypath.newway)
+
+    def force(self):
+        # If no waypoints remain in the path, exit and return zero force.
+        if self.waypath.newway is None:
+            return ZERO_VECTOR
+        # Otherwise, check if we're within distance the next waypoint.
+        # Note: No force is returned if we switch to the next waypoint.
+        if (self.owner.pos - self.waypath.newway).sqnorm() <= self.wprad_sq:
+            self.waypath.advance()
+            nextwaypt = self.waypath.newway
+            # If this was the last waypoint in the path, we should already be
+            # using ARRIVE, and don't need to change anything. Otherwise we
+            # update the steering behaviour to the new waypoint.
+            if nextwaypt is not None:
+                # TODO: Next line used only by the demo for testing??
+                self.owner.waypoint= nextwaypt
+                del self.wayforce
+                if self.waypath.num_left() <= 1:
+                    self.wayforce = Arrive(self.owner, nextwaypt)
+                else:
+                    self.wayforce = Seek(self.owner, nextwaypt)
+            return ZERO_VECTOR
+        # Otherwise, we're still in progress to the current waypoint.
+        return self.wayforce.force()
+
+
+PATHRESUME_DECAY = 0.075
+class WaypathResume(SteeringBehaviour):
+    """Visit waypoints in order, trying to stay close to the path between them.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        waypath (WaypointPath): The path to be followed.
+        expk (positive float): Exponential decay constant; see notes.
+        wayradius (float): Waypoint radius; see notes.
+
+    Note:
+        If the vehicle is knocked off-course, this will give a balance between
+        returning directly to the current path edge and progressing towards the
+        next waypoint; this is controlled by *expk*; larger values give a more
+        immediate return to the path.
+
+        If the vehicle has already overshot the next waypoint, we head directly
+        to that waypoint, ignoring the path. Otherwise, follow an exponential
+        decay curve asymptotic to the path; although this curve doesn't truly
+        pass through the waypoint, it makes computations very quick, especially
+        since we store invk. As above, a waypoint is visited once the distance
+        to owner is less than *wayradius*, so we don't need to hit the waypoint
+        exactly.
+
+    Todo:
+        This is less of a behaviour and more of a manager for other behaviours;
+        consider moving its functionality to within the Navigator class.
+    """
+    def __init__(self, owner, waypath, expk=PATHRESUME_DECAY, wayradius=WAYPOINT_RADIUS):
+        SteeringBehaviour.__init__(self, owner)
+        self.waypath = waypath
+        self.invk = 1.0/expk
+        self.wprad_sq = wayradius**2
+
+    def force(self):
+        owner = self.owner
+        nextwaypt = self.waypath.newway
+        # If no waypoint left, exit immediately
+        if nextwaypt is None:
+            return ZERO_VECTOR
+
+        # This is the remaining direct distance to the next waypoint,
+        # using orthogonal projection operator.
+        rl = (nextwaypt - owner.pos)/self.waypath.edgevector
+
+        # We use an amazing computational shortcut to check if the resume point
+        # (on the actual path) would be beyond the next waypoint. If so...
+        if self.invk >= rl:
+            # ...use ARRIVE if this is the last waypoint, and exit so that we
+            # don't bother checking if we've reached it.
+            if self.waypath.num_left() <= 1:
+                target_offset = (nextwaypt - owner.pos)
+                dist = target_offset.norm()
+                if dist > 0:
+                    speed = min(dist / ARRIVE_DECEL_TWEAK, owner.maxspeed)
+                    targetvel = (speed/dist)*target_offset
+                    return targetvel - owner.vel
+                else:
+                    return ZERO_VECTOR
+            # ...otherwise, set the SEEK target for later computation.
+            else:
+                target = nextwaypt
+        # Else, the resume point is still between last/next waypoints, and we
+        # need to compute it (for later SEEKing)
+        else:
+            target = nextwaypt + (self.invk - rl)*self.waypath.edgevector
+
+        # If we're still here, the above computations say we must SEEK to a
+        # resume point or a waypointthat isn't the final one in the path. So...
+        # Check if we're close enough to the next waypoint to switch; if so,
+        # return zero force during this update.
+        if (owner.pos - nextwaypt).sqnorm() <= self.wprad_sq:
+            self.waypath.advance()
+            return ZERO_VECTOR
+        # Otherwise, SEEK to whatever target was computed above
+        else:
+            targetvel = (target - owner.pos)
+            targetvel.scale_to(owner.maxspeed)
+            return targetvel - owner.vel
+
 ##############################################################################
 class Navigator(object):
     """Helper class for managing steering behaviours.
@@ -750,239 +1001,6 @@ class Navigator(object):
         self.active_behaviours.sort(key=PRIORITY_KEY)
         self.force_update = Navigator.compute_force_budgeted
 
-############################################################################
-############################################################################
-############################################################################
-
-
-
-##############################################
-### Path-related behaviours start here     ###
-##############################################
-
-class WaypointPath(object):
-    """Helper class for managing path-related behaviour, using waypoints.
-
-    Parameters
-    ----------
-    waypoints: list of Point2d
-        Non-empty list of waypoints on this path.
-    is_cyclic: boolean
-        If set to True, path will automatically cycle. See notes below.
-
-    Notes
-    -----
-    Instances of WaypointPath should be owned by a SteeringBehaviour, but all
-    path-management code is controlled from within this class.
-
-    When using this for vehicle steering, the first waypoint is intended as the
-    starting point of some owner vehicle. The vehicle will *not* automatically
-    return to this point even if is_cyclic is set to True, so add it manually
-    to the end of waypoints if a return trip is needed.
-
-    TODO: It may be helpful to rewrite this class as a generator.
-    """
-
-    def __init__(self, waypoints, is_cyclic=False):
-        self.oldway = waypoints[0]
-        self.waypoints = []
-        prev_wp = self.oldway
-
-        # Include only consecutive waypoints that are far enough apart
-        for wp in waypoints[1:]:
-            if (prev_wp - wp).sqnorm() >= PATH_EPSILON_SQ:
-                self.waypoints.append(wp)
-                prev_wp = wp
-
-        # Compute initial segment, see Notes on returning to first waypoint
-        self.newway = self.waypoints[0]
-        self.wpindex = 0
-
-        # Length of this edge and unit vector (oldway to newway)
-        offset = self.newway - self.oldway
-        self.edgelength = offset.norm()
-        self.edgevector = offset.scm(1/self.edgelength)
-
-        self.is_cyclic = is_cyclic
-
-    def reset_from_position(self, start_pos, do_return=False):
-        """Reset the next waypoint to the start of this path.
-
-        Parameters
-        ----------
-        start_pos: Point2d
-            The new starting point for the path
-        do_return: boolean
-            If set to True, start_pos becomes the final waypoint. See Notes.
-
-        Notes
-        -----
-        As with the __init__() method, start_pos is intended as the current
-        location of some vehicle, and is not explicitly added as the first
-        waypoint. If the path was previously cyclic, we will not return to
-        start_pos by default (but the previous waypoints will still continue
-        to cycle). To override this, set do_return=True. However, start_pos
-        will not be added explicitly is it is within the threshold given by
-        PATH_EPSILON_SQ, because it is close enough to an actual waypoint.
-        """
-        self.newway = self.waypoints[0]
-        self.wpindex = 0
-        # TODO: Make sure this works for single edges and start_pos close to
-        # the first or last waypoint in a cyclic path.
-        # If we're close to the first waypoint, use that wp as start_pos
-        if (start_pos - self.newway).sqnorm() < PATH_EPSILON_SQ:
-            self.advance()
-        if do_return and (start_pos - self.waypoints[-1]).sqnorm() >= PATH_EPSILON_SQ:
-            self.waypoints.append(start_pos)
-
-    def advance(self):
-        """Update our waypoint to the next one in the path.
-
-        Notes
-        -----
-        When we advance() from the last waypoint in a non-cyclic path, the
-        value of self.newway is set to None. This can be used elsewhere??
-        """
-        self.oldway = self.newway
-        self.wpindex = self.wpindex + 1
-
-        try:
-            self.newway = self.waypoints[self.wpindex]
-            # Compute new length and unit vector
-            offset = self.newway - self.oldway
-            self.edgelength = offset.norm()
-            self.edgevector = offset.scm(1/self.edgelength)
-
-        # This throws if we are at the last waypoint in the list.
-        except IndexError:
-            if self.is_cyclic:
-                # If cyclic, go back to the first waypoint
-                self.wpindex = 0
-                self.newway = self.waypoints[0]
-                offset = self.newway - self.oldway
-                self.edgelength = offset.norm()
-                self.edgevector = offset.scm(1/self.edgelength)
-            else:
-                self.newway = None
-                self.edgelength = 0
-                self.edgevector = None
-
-    def num_left(self):
-        """Returns the number of waypoints remaining in this path.
-
-        Notes
-        -----
-        For cyclic paths, we always return the total number of waypoints,
-        regardless of where we are in the list.
-        """
-        if self.is_cyclic:
-            return len(self.waypoints)
-        else:
-            return len(self.waypoints) - self.wpindex
-
-
-def force_waypathtraverse(owner, waypath):
-    """Steering force for WAYPATHTRAVERSE behaviour.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    waypath: WaypointPath
-        Path to be followed by the owner
-
-    Notes
-    -----
-    This is the simple version; we merely head towards the next waypoint.
-    If there is only one waypoint left, we ARRIVE at it. Otherwise, we SEEK.
-    """
-    # If no waypoint left, exit immediately
-    if waypath.newway is None:
-        return ZERO_VECTOR
-
-    # If current destination is the last waypoint on this path, ARRIVE
-    # at that waypoint
-    if waypath.num_left() <= 1:
-        return force_arrive(owner, waypath.newway)
-
-    # Otherwise, check if we've reached the next waypoint
-    # Note: No force is returned when we switch to the next waypoint
-    if (owner.pos - waypath.newway).sqnorm() <= WAYPOINT_TOLERANCE_SQ:
-        waypath.advance()
-        return ZERO_VECTOR
-
-    # TODO: This is for testing only?
-    owner.waypoint = waypath.newway
-
-    return force_seek(owner, waypath.newway)
-
-def activate_waypathtraverse(steering, waypath):
-    """Activate WAYPATHTRAVERSE behaviour."""
-    # TODO: Error checking here.
-    steering.targets['WAYPATHTRAVERSE'] = (waypath,)
-    return True
-
-def force_waypathresume(owner, waypath, invk):
-    """Steering force for WAYPATHRESUME behaviour.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    waypath: WaypointPath
-        Path to be followed by the owner
-    invk: positive float
-        Reciprocal of exponential decay constant. See Notes.
-
-    Notes
-    -----
-    If the vehicle is off course, this will give a balance between returning
-    directly to the current path edge and progressing to the next waypoint.
-
-    If the vehicle has already overshot the next waypoint, we head directly to
-    that waypoint, ignoring the path. Otherwise, follow an exponential decay
-    curve asymptotic to the path; although this curve doesn't actually pass
-    through the waypoint, it makes computations very quick, especially since
-    we store invk. Smaller values of invk imply a larger decay rate, and give
-    more immediate return to the path.
-    """
-    # If no waypoint left, exit immediately
-    if waypath.newway is None:
-        return ZERO_VECTOR
-
-    # This is the remaining direct distance to the next waypoint,
-    # using orthogonal projection operator.
-    rl = (waypath.newway - owner.pos)/waypath.edgevector
-
-    # If resume target is beyond the next waypoint, SEEK/ARRIVE to waypoint.
-    # Otherwise, SEEK (never ARRIVE) to the resume target
-    if invk >= rl: # Resume target is beyond the next waypoint
-        target = waypath.newway
-        # ARRIVE if this is the last waypoint; no further computation neeed
-        if waypath.num_left() <= 1:
-            return force_arrive(owner, waypath.newway)
-    else: # Resume target is between last/next waypoints
-        target = waypath.newway + waypath.edgevector.scm(invk - rl)
-
-    # If we reach this part of the code, we must SEEK to either a target on
-    # the path or a waypoint that is not the last one in the path. So...
-    # Check if we're close enough to the next waypoint to switch.
-    # Note: No force is returned when we switch to the next waypoint
-    if (owner.pos - waypath.newway).sqnorm() <= WAYPOINT_TOLERANCE_SQ:
-        waypath.advance()
-        return ZERO_VECTOR
-    else:
-        return force_seek(owner, target)
-
-def activate_waypathresume(steering, target):
-    """Activate WAYPATHRESUME behaviour."""
-    # TODO: Error checking here.
-    if len(target) > 1:
-        invk = 1.0/target[1]
-    else:
-        invk = 1.0/PATHRESUME_DECAY
-    steering.targets['WAYPATHRESUME'] = (target[0], invk)
-    return True
 
 def force_flowfollow(owner, vel_field, dt=1.0):
     """Steering force for FLOWFOLLOW behaviour.
@@ -1115,30 +1133,6 @@ def activate_cohesion(steering, n_list):
 FLOCKING_LIST = ['SEPARATE', 'ALIGN', 'COHESION']
 """Flocking behaviours need additional set/pause/resume/stop checking."""
 
-########################################################
-## Auto-generate a list of behaviours above, along with
-## dictionaries to reference their force/activate fnc's.
-## This allows us to easily add behaviours later; see
-## the module docstring for instructions.
-########################################################
-BEHAVIOUR_LIST = [x[6:].upper() for x in locals().keys() if x[:6] == 'force_']
-FORCE_FNC = dict()
-ACTIVATE_FNC = dict()
-for behaviour in BEHAVIOUR_LIST[:]:
-    try:
-        force_fnc = locals()['force_' + behaviour.lower()]
-        activate_fnc = locals()['activate_' + behaviour.lower()]
-        FORCE_FNC[behaviour] = force_fnc
-        ACTIVATE_FNC[behaviour] = activate_fnc
-    except KeyError:
-        logging.debug("[steering.py] Warning: could not define behaviour %s." % behaviour)
-        BEHAVIOUR_LIST.remove(behaviour)
-
-# Now make sure that expected flocking behaviours were correctly defined
-for behaviour in FLOCKING_LIST:
-    if not (behaviour in BEHAVIOUR_LIST):
-        logging.debug("[steering.py] Warning: flocking %s is not available." % behaviour)
-        FLOCKING_LIST.remove(behaviour)
 
 ########################################################
 ### Navigator-type class to control vehicle steering ###
@@ -1146,6 +1140,10 @@ for behaviour in FLOCKING_LIST:
 
 class SteeringBehavior(object):
     """Helper class for managing a vehicle's autonomous steering.
+
+    Warning
+    -------
+    This is deprecated and will be removed once Navigator is complete.
 
     Each vehicle should maintain a reference to an instance of this class,
     and call the compute_force() method when an update is needed.
