@@ -896,6 +896,30 @@ class WaypathResume(SteeringBehaviour):
             targetvel.scale_to(owner.maxspeed)
             return targetvel - owner.vel
 
+
+class FlowFollow(SteeringBehaviour):
+    """Steering force for FLOWFOLLOW behaviour.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        vel_field (function Point2d(Point2d)):  A velocity vector field; owner
+            will attempt to follow this.
+        dt (positive float): Time between steering updates.
+
+    Todo:
+        Still experimental. We should probably allow for a variable time step.
+    """
+    def __init__(self, owner, vel_field, dt=1.0):
+        self.owner = owner
+        self.flow = vel_field
+        self.step = dt
+
+    def force(self):
+        new_pos = self.owner.pos + self.step*self.owner.vel
+        # Computational shortcut, using desired velocity as the average of the
+        # owner's current velocity and the predicted velocity.
+        return 0.5*(self.flow(new_pos) - self.owner.vel)
+
 ##############################################################################
 class Navigator(object):
     """Helper class for managing steering behaviours.
@@ -1002,28 +1026,6 @@ class Navigator(object):
         self.force_update = Navigator.compute_force_budgeted
 
 
-def force_flowfollow(owner, vel_field, dt=1.0):
-    """Steering force for FLOWFOLLOW behaviour.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-    vel_field: function Point2d(Point2d)
-        A velocity vector field; owner will attempt to follow this.
-    dt: Non-negative float
-        Time between steering updates.
-    """
-    new_pos = owner.pos + owner.vel.scm(dt)
-    target_vel = vel_field(new_pos)
-    return (target_vel - owner.vel)
-
-def activate_flowfollow(steering, target):
-    """Activate FLOWFOLLOW behaviour."""
-    # TODO: Error checking here.
-    # owner_field = lambda pos: vel_field(pos).scm(vel_scale)
-    steering.targets['FLOWFOLLOW'] = target
-    return True
 
 ##############################################
 ### Group (flocking) behaviours start here ###
