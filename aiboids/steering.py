@@ -15,6 +15,14 @@ Todo:
     definitions, but they might end up in some other file.
 
 Todo:
+    Flocking behaviours all assume the flock_list remains constant. If we don't
+    want this, it may be better to have store flock_list on the owner and have
+    it managed externally (perhaps via the owner's Navigator object).
+
+    Another side effect is that each instance of flocking stores its own copy
+    of the flock_list, and this isn't very efficient use of storage.
+
+Todo:
     Fix the rest of the module docstring below, once we've finished changes.
 
 When using budgeted force (the default), we need to know the order in which
@@ -85,7 +93,7 @@ rand_uni = lambda x: rand_gen.uniform(-x, x)
 PRIORITY_DEFAULTS = ['BRAKE',
                      'WALLAVOID',
                      'OBSTACLEAVOID',
-                     'SEPARATE',
+                     'FLOCKSEPARATE',
                      'FLEE',
                      'EVADE',
                      'SEEK',
@@ -96,8 +104,8 @@ PRIORITY_DEFAULTS = ['BRAKE',
                      'FOLLOW',
                      'WAYPATHRESUME',
                      'WAYPATHVISIT',
-                     'COHESION',
-                     'ALIGN',
+                     'FLOCKCOHESION',
+                     'FLOCKALIGN',
                      'FLOWFOLLOW',
                      'WANDER'
                     ]
@@ -396,7 +404,7 @@ class WallAvoid(SteeringBehaviour):
         SteeringBehaviour.__init__(self, owner)
         # Three whiskers: Front and left/right by 45 degrees
         # Side whiskers are scaled by WALLAVOID_WHISKER_SCALE
-        self.whisker_coords = ((1,0),(SQRT_HALF,SQRT_HALF),(SQRT_HALF,-SQRT_HALF))
+        self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
         self.whisker_sizes = (front_length, WALLAVOID_SIDE_SCALE, WALLAVOID_SIDE_SCALE)
         self.whisker_num = 3
         self.walls = wall_list
@@ -509,7 +517,7 @@ class Follow(SteeringBehaviour):
         SteeringBehaviour.__init__(self, owner)
         self.leader = leader
         self.offset = offset
-        self.hesistance = hesitance
+        self.hesitance = hesitance
 
     def force(self):
         owner = self.owner
@@ -805,7 +813,7 @@ class WaypathVisit(SteeringBehaviour):
             # update the steering behaviour to the new waypoint.
             if nextwaypt is not None:
                 # TODO: Next line used only by the demo for testing??
-                self.owner.waypoint= nextwaypt
+                self.owner.waypoint = nextwaypt
                 del self.wayforce
                 if self.waypath.num_left() <= 1:
                     self.wayforce = Arrive(self.owner, nextwaypt)
@@ -910,6 +918,7 @@ class FlowFollow(SteeringBehaviour):
         Still experimental. We should probably allow for a variable time step.
     """
     def __init__(self, owner, vel_field, dt=1.0):
+        SteeringBehaviour.__init__(self, owner)
         self.owner = owner
         self.flow = vel_field
         self.step = dt
@@ -920,7 +929,105 @@ class FlowFollow(SteeringBehaviour):
         # owner's current velocity and the predicted velocity.
         return 0.5*(self.flow(new_pos) - self.owner.vel)
 
-##############################################################################
+
+##############################################
+### Group (flocking) behaviours start here ###
+##############################################
+FLOCKING_RADIUS_MULTIPLIER = 2.0
+# TODO: When initiating flocking, check that owner has a flockmates attribute.
+
+FLOCKING_SEPARATE_SCALE = 1.2
+class FlockSeparate(SteeringBehaviour):
+    """Steering force for SEPARATE group behaviour (flocking).
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+
+    Notes:
+        For each neighbor, include a force away from that neighbor of magnitude
+        proportional to the neighbor radius and inversely proprotional to
+        distance. This gave nicer results and allows us to cleverly avoid
+        computing a sqrt.
+    """
+    def __init__(self, owner):
+        SteeringBehaviour.__init__(self, owner)
+        self.owner = owner
+        owner.flocking = True
+
+    def force(self):
+        result = Point2d(0,0)
+        for other in self.owner.neighbor_list:
+            if other is not self.owner:
+                offset = self.owner.pos - other.pos
+                result += (FLOCKING_SEPARATE_SCALE*other.radius/offset.sqnorm())*offset
+        return result
+
+
+class FlockAlign(SteeringBehaviour):
+    """Steering force for ALIGN group behaviour (flocking).
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+
+    Notes:
+        Unlike(?) traditional boids, we ALIGN with the average of neighbors'
+        velocity vectors. Align with heading (normalize velocity) looked weird.
+    """
+    def __init__(self, owner):
+        SteeringBehaviour.__init__(self, owner)
+        self.owner = owner
+        owner.flocking = True
+
+    def force(self):
+        result = Point2d(0,0)
+        n = 0
+        for other in self.owner.neighbor_list:
+            if other is not self.owner:
+                result += other.vel
+                n += 1
+        if n > 0:
+            return (1.0/n)*result - self.owner.vel
+        else:
+            return ZERO_VECTOR
+
+
+FLOCKING_COHESION_HESITANCE = 3.0
+class FlockCohesion(SteeringBehaviour):
+    """Steering force for COHESION group behaviour.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+    """
+
+    def __init__(self, owner):
+        SteeringBehaviour.__init__(self, owner)
+        self.owner = owner
+        owner.flocking = True
+
+    def force(self):
+        center = Point2d(0,0)
+        n = 0
+        for other in self.owner.neighbor_list:
+            if other is not self.owner:
+                center += other.pos
+                n += 1
+        try:
+            # ARRIVE at the average position of flock neighbors
+            target_offset = ((1.0/n)*center - self.owner.pos)
+            dist = target_offset.norm()
+            if dist > 0:
+                speed = dist / (ARRIVE_DECEL_TWEAK * FLOCKING_COHESION_HESITANCE)
+                if speed > self.owner.maxspeed:
+                    speed = self.owner.maxspeed
+                targetvel = (speed/dist)*target_offset
+                return targetvel - self.owner.vel
+        except ZeroDivisionError:
+            return ZERO_VECTOR
+
+
+########################################################
+### Navigator-type class to control vehicle steering ###
+########################################################
 class Navigator(object):
     """Helper class for managing steering behaviours.
 
@@ -939,6 +1046,7 @@ class Navigator(object):
         else:
             self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
+        vehicle.flocking = False
         # TODO: Give vehicle convenient access to navigator interface,
         #       such as vehicle.set_steering = self.set_steering(...)
 
@@ -967,7 +1075,8 @@ class Navigator(object):
                 self.force_update = Navigator.sort_budget_priorities
 
     def update(self, delta_t=1.0):
-        # TODO: Option for budgeted force; choose this in __init__()
+        if self.vehicle.flocking:
+            self.update_neighbors(self.vehicle.flockmates)
         self.force_update(self)
         self.vehicle.move(delta_t, self.steering_force)
 
@@ -979,10 +1088,6 @@ class Navigator(object):
             applied, this function no longer does so.
         """
         self.steering_force.zero()
-        owner = self.vehicle
-        # If any flocking is active, determine neighbors first
-        #if self.flocking is True:
-        #    self.flag_neighbor_vehicles(self.flockmates)
         # Iterate over active behaviours and accumulate force from each
         for behaviour in self.active_behaviours:
             self.steering_force += behaviour.force()
@@ -990,10 +1095,9 @@ class Navigator(object):
     def compute_force_budgeted(self):
         """Find prioritized steering force within the vehicle's budget.
 
-        TODO: Vehicle's maxforce is used as the budget. Allow other values?"""
-        # If any flocking is active, determine neighbors first
-        #if self.flocking is True:
-        #    self.flag_neighbor_vehicles(self.flockmates)
+        Todo:
+            Vehicle's maxforce is used as the budget. Allow other values?
+        """
         self.steering_force.zero()
         budget = self.vehicle.maxforce
         for behaviour in self.active_behaviours:
@@ -1025,120 +1129,45 @@ class Navigator(object):
         self.active_behaviours.sort(key=PRIORITY_KEY)
         self.force_update = Navigator.compute_force_budgeted
 
+    def update_neighbors(self, vehlist=[]):
+        """Populates a list of nearby vehicles, for use with flocking.
 
+        Args:
+            vehlist (List of BasePointMass2d): Objects to check; see notes.
 
-##############################################
-### Group (flocking) behaviours start here ###
-##############################################
+        Notes:
+            This function checks object based on their distance to owner and
+            includes only those in front of the owner. Maximum distance is the
+            owner's radius times FLOCKING_RADIUS_MULTIPLIER. We may consider
+            more sophisticated sensing of neighbors in the future.
 
-def force_separate(owner):
-    """Steering force for SEPARATE group behaviour (flocking).
+            Any pre-processing (spatial partitioning, sensory perception, or
+            flocking with certain vehicles only) should be done before calling
+            this function; with those results passed in as vehlist.
 
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
+            Results are stored as owner.neighbor_list to be read later by any
+            steering force() functions (mostly flocking) that require neighbor
+            information. Run this function before each steering update.
+        """
+        owner = self.vehicle
+        n_radius = owner.radius * FLOCKING_RADIUS_MULTIPLIER
+        owner.neighbor_list = list()
+        for other in vehlist:
+            if other is not owner:
+                min_range_sq = (n_radius + other.radius)**2
+                offset = other.pos - owner.pos
+                if offset.sqnorm() < min_range_sq:
+                    # Only consider neighbors to the front
+                    # TODO: Allow variable angle for FOV
+                    if offset*owner.front >= 0:
+                        owner.neighbor_list.append(other)
 
-    Notes
-    -----
-    Flocking forces use owner.neighbor_list to decide which vehicles to flock
-    with; update this list before calling this function.
-
-    For each neighbor, include a force away from that neighbor with magnitude
-    proportional to the neighbor radius and inversely proprotional to distance.
-    This gave nicer results and allows us to cleverly avoid computing a sqrt.
-    """
-    result = Point2d(0,0)
-    for other in owner.neighbor_list:
-        if other is not owner:
-            offset = owner.pos - other.pos
-            result += offset.scm(FLOCKING_SEPARATE_SCALE*other.radius/offset.sqnorm())
-    return result
-
-def activate_separate(steering, n_list):
-    """Activate SEPARATE behaviour."""
-    steering.flocking = True
-    # TODO: Check for errors
-    steering.targets['SEPARATE'] = ()
-    steering.flockmates = n_list[:]
-    return True
-
-def force_align(owner):
-    """Steering force for ALIGN group behaviour (flocking).
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-
-    Notes
-    -----
-    Flocking forces use owner.neighbor_list to decide which vehicles to flock
-    with; update this list before calling this function.
-
-    Unlike(?) traditional boids, we ALIGN with the average of neighbors'
-    velocity vectors. Align with heading (normalize velocity) looked weird.
-    """
-    result = Point2d(0,0)
-    n = 0
-    for other in owner.neighbor_list:
-        if other is not owner:
-            result += other.vel
-            n += 1
-    if n > 0:
-        result = result.scm(1.0/n)
-        result -= owner.front
-    return result
-
-def activate_align(steering, n_list):
-    """Activate ALIGN behaviour."""
-    steering.flocking = True
-    # TODO: Check for errors
-    steering.targets['ALIGN'] = ()
-    steering.flockmates = n_list[:]
-    return True
-
-def force_cohesion(owner):
-    """Steering force for COHESION group behaviour.
-
-    Parameters
-    ----------
-    owner: SimpleVehicle2d
-        The vehicle computing this force.
-
-    Notes
-    -----
-    Flocking forces use owner.neighbor_list to decide which vehicles to flock
-    with; update this list before calling this function.
-    """
-
-    center = Point2d(0,0)
-    n = 0
-    for other in owner.neighbor_list:
-        if other is not owner:
-            center += other.pos
-            n += 1
-    if n > 0:
-        center = center.scm(1.0/n)
-        return force_arrive(owner, center, FLOCKING_COHESHION_HESITANCE)
-    else:
-        return ZERO_VECTOR
-
-def activate_cohesion(steering, n_list):
-    """Activate COHESION behaviour."""
-    steering.flocking = True
-    # TODO: Check for errors
-    steering.targets['COHESION'] = ()
-    steering.flockmates = n_list[:]
-    return True
+#########################
+### Old Code Below
+#########################
 
 FLOCKING_LIST = ['SEPARATE', 'ALIGN', 'COHESION']
 """Flocking behaviours need additional set/pause/resume/stop checking."""
-
-
-########################################################
-### Navigator-type class to control vehicle steering ###
-########################################################
 
 class SteeringBehavior(object):
     """Helper class for managing a vehicle's autonomous steering.
