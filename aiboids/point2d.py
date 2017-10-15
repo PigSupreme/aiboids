@@ -2,9 +2,9 @@
 """Two-Dimensional Point/Vector class with common operations.
 
 Point2d() vectors support standard vector arithmetic: +, - (unary and binary),
-and componentwise test for (in)equality. Multiplication a*b is overloaded with
+and componentwise test for (in)equality. Multiplication of vectors a*b gives
 the regular dot product; vdot(a,b) is also available. Scalar multiplication is
-done functionally, using `a.scm(k)` for the scalar k and vector a.
+defined as usual: k*a for the scalar k and vector a.
 
 Many other operations are available; see below for details.
 
@@ -163,20 +163,6 @@ class Point2d(object):
         """
         raise TypeError('Compound assignment for dot product is not supported.')
 
-    def scm(self, scalar):
-        """Scalar multiplication by this vector.
-
-        Warning:
-            Future deprecation is likely, use s*v instead of v.scm(s).
-
-        >>> a = Point2d(1,-2)
-        >>> print(a.scm(3.5))
-        Point2d: <3.500000000, -7.000000000>
-        >>> print(a.scm(-2))
-        Point2d: <-2.000000000, 4.000000000>
-        """
-        return Point2d(scalar*self.nt[0], scalar*self.nt[1])
-
     def rotated_by(self, angle, use_deg=False):
         """Get this vector rotated anticlockwise.
 
@@ -231,7 +217,7 @@ class Point2d(object):
         >>> a.unit().norm()
         0.9999999999999999
         """
-        return self.scm(1.0/self.norm())
+        return (1.0/self.norm())*self
 
     def normalize(self):
         """Rescale this vector to have length 1.
@@ -376,7 +362,7 @@ class Point2d(object):
         True
         """
         r = (self*direction)/direction.sqnorm()
-        proj = direction.scm(r)
+        proj = r*direction
         return proj
 
     def proj(self, direction):
@@ -391,7 +377,7 @@ class Point2d(object):
 
         Note:
             If you want both v2 and v3, use Point2d.resolve(direction) instead.
-            See divison / and compound divivion =/ above for other options.
+            See divison / and compound division =/ above for other options.
 
         >>> a = Point2d(2,4)
         >>> b = Point2d(3,-2)
@@ -401,7 +387,7 @@ class Point2d(object):
         Point2d: <-0.200000000, -0.400000000>
         """
         r = (self*direction)/direction.sqnorm()
-        proj = direction.scm(r)
+        proj = r*direction
         return proj
 
     def resolve(self, direction):

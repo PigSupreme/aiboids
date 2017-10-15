@@ -251,7 +251,7 @@ class BasePointMass2d(object):
         use the base accumulate/move methods without needing extra code.
         """
         # Update position using current velocity
-        self.pos = self.pos + self.vel.scm(delta_t)
+        self.pos = self.pos + delta_t * self.vel
 
         # If no force_vector was given, use self-accumulated force.
         if force_vector is None:
@@ -259,7 +259,7 @@ class BasePointMass2d(object):
             self.accumulated_force.zero()
         # Don't exceed our maximum force; compute acceleration
         force_vector.truncate(self.maxforce)
-        accel = force_vector.scm(delta_t/self.mass)
+        accel = (delta_t/self.mass)*force_vector
         # Compute new velocity, but don't exceed maximum speed.
         self.vel = self.vel + accel
         self.vel.truncate(self.maxspeed)
@@ -341,13 +341,13 @@ class SimpleRigidBody2d(BasePointMass2d):
         """
 
         # Update position using current velocity
-        self.pos = self.pos + self.vel.scm(delta_t)
+        self.pos = self.pos + delta_t * self.vel
 
         # Apply force, if any...
         if force_vector:
             # Don't exceed our maximum force; compute acceleration/velocity
             force_vector.truncate(self.maxforce)
-            accel = force_vector.scm(delta_t/self.mass)
+            accel = (delta_t/self.mass)*force_vector
             self.vel = self.vel + accel
         # ..but don't exceed our maximum speed
         self.vel.truncate(self.maxspeed)

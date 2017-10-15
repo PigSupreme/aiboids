@@ -8,9 +8,6 @@ owner (and may do other things in the future). The force() method must take
 See the Seek class for a simple example.
 
 Todo:
-    Replace Point2d.scm() instances by * operator and test.
-
-Todo:
     Flocking behaviours all assume the flock_list remains constant. If we don't
     want this, it may be better to have store flock_list on the owner and have
     it managed externally (perhaps via the owner's Navigator object).
@@ -131,7 +128,7 @@ class Flee(SteeringBehaviour):
         owner = self.owner
         targetvel = (owner.pos - self.target)
         if 0 < targetvel.sqnorm() < self.panic_sq:
-            targetvel = targetvel.unit().scm(owner.maxspeed)
+            targetvel = (owner.maxspeed)*targetvel.unit()
             return targetvel - owner.vel
         else:
             return ZERO_VECTOR
@@ -255,7 +252,7 @@ class ObstacleAvoid(SteeringBehaviour):
             lr = obs_closest.radius
             lat_scale = (lr - ly)*(2.0 - lr / front_d)
             brake_scale = (lr - lx)*OBSTACLEAVOID_BRAKE_WEIGHT
-            result = owner.front.scm(brake_scale) + owner.left.scm(lat_scale)
+            result = (brake_scale)*owner.front + (lat_scale)*owner.left
             return result
         else:
             return ZERO_VECTOR
@@ -469,7 +466,7 @@ class Follow(SteeringBehaviour):
         owner = self.owner
         leader = self.leader
         offset = self.offset
-        target_pos = leader.pos + leader.front.scm(offset[0]) + leader.left.scm(offset[1])
+        target_pos = leader.pos + (offset[0])*leader.front + (offset[1])*leader.left
         diff = target_pos - self.owner.pos
         ptime = diff.norm() / (owner.maxspeed + leader.vel.norm())
         target_pos += ptime* leader.vel
@@ -637,7 +634,7 @@ class WaypointPath(object):
         # Length of this edge and unit vector (oldway to newway)
         offset = self.newway - self.oldway
         self.edgelength = offset.norm()
-        self.edgevector = offset.scm(1/self.edgelength)
+        self.edgevector = (1.0/self.edgelength)*offset
 
         self.is_cyclic = is_cyclic
 
@@ -685,7 +682,7 @@ class WaypointPath(object):
             # Compute new length and unit vector
             offset = self.newway - self.oldway
             self.edgelength = offset.norm()
-            self.edgevector = offset.scm(1/self.edgelength)
+            self.edgevector = (1.0/self.edgelength)*offset
 
         # This throws if we are at the last waypoint in the list.
         except IndexError:
@@ -695,7 +692,7 @@ class WaypointPath(object):
                 self.newway = self.waypoints[0]
                 offset = self.newway - self.oldway
                 self.edgelength = offset.norm()
-                self.edgevector = offset.scm(1/self.edgelength)
+                self.edgevector = (1.0/self.edgelength)*offset
             else:
                 self.newway = None
                 self.edgelength = 0
@@ -1049,7 +1046,7 @@ class Navigator(object):
                 budget -= newnorm
             else:
                 # Scale newforce to remaining budget, apply, and exit
-                newforce.scm(budget/newnorm)
+                (budget/newnorm)*newforce
                 self.steering_force += newforce
                 return self.steering_force
 
