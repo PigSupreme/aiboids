@@ -79,7 +79,7 @@ if __name__ == "__main__":
                  BaseWall2d((sc_width//2, sc_height-10), sc_width-20, 4, Point2d(0,-1)),
                  BaseWall2d((10, sc_height//2), sc_height-20, 4, Point2d(1,0)),
                  BaseWall2d((sc_width-10,sc_height//2), sc_height-20, 4, Point2d(-1,0)))
-    wall_list = []
+    #wall_list = []
     for wall in wall_list:
         rgroup.append(wall.sprite)
 
@@ -96,14 +96,16 @@ if __name__ == "__main__":
     green.navigator.set_steering('ARRIVE', 0.5*Point2d(*size))
 
     # Yellow (ARRIVE demo)
-    yellow.navigator.set_steering('TAKECOVER', green, obslist, 250, True)
+    yellow.navigator.set_steering('TAKECOVER', green, obslist, 250, False)
+    yellow.navigator.set_steering('WANDER')
+    yellow.navigator.pause_steering('WANDER')
 
     # Red (ARRIVE with hesitance)
     #red.navigator.set_steering('ARRIVE', targs[2].pos, 8.0)
 
     ### Main loop ###
     ticks = 0
-    TARGET_FREQ = 75
+    TARGET_FREQ = 200
     while 1:
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
@@ -120,8 +122,12 @@ if __name__ == "__main__":
             # Green tracks yellow
             new_pos = Point2d(*randpos())
             green.navigator.set_steering('ARRIVE', yellow.pos + 50*yellow.front)
+            yellow.navigator.pause_steering('TAKECOVER')
+            yellow.navigator.resume_steering('WANDER')
         if ticks == 3*TARGET_FREQ:
             green.navigator.set_steering('ARRIVE', yellow.pos - 50*yellow.front)
+            yellow.navigator.pause_steering('WANDER')
+            yellow.navigator.resume_steering('TAKECOVER')
             ticks = 0
 
         # Update Sprites (via pygame sprite group update)

@@ -58,6 +58,8 @@ rand_gen = Random()
 rand_gen.seed()
 rand_uni = lambda x: rand_gen.uniform(-x, x)
 
+from collections import OrderedDict
+
 # Dictionary of default constants for steering behaviours
 from aiboids.steering_constants import STEERING_DEFAULTS
 # TODO: Next two lines are covering for the broken __import__ below:
@@ -67,7 +69,7 @@ for const_name in STEERING_DEFAULTS.keys():
 
 # Order in which behaviours are considered when using budgeted force:
 from aiboids.steering_constants import PRIORITY_DEFAULTS
-PRIORITY_KEY = lambda x: PRIORITY_DEFAULTS.index(x.__class__.__name__.upper())
+PRIORITY_KEY = lambda x: PRIORITY_DEFAULTS.index(x[0])
 
 class SteeringBehaviour(object):
     """Base class for all steering behaviours.
@@ -975,7 +977,8 @@ class Navigator(object):
     def __init__(self, vehicle, use_budget=True):
         self.vehicle = vehicle
         self.steering_force = Point2d(0,0)
-        self.active_behaviours = list()
+        self.active_behaviours = dict()
+        self.paused_behaviours = dict()
         if use_budget:
             self.force_update = Navigator.compute_force_budgeted
         else:
@@ -986,28 +989,58 @@ class Navigator(object):
         #       such as vehicle.set_steering = self.set_steering(...)
 
     def set_steering(self, behaviour, *args):
-        """Add a new steering behaviour or change existing targets."""
+        """Add a new steering behaviour or change existing targets.
+
+        Args:
+            behaviour(string): Name of the behaviour to be added/modified.
+            args: Additional arguments for that behaviour.
+        """
         # First make sure that the behaviour is defined.
         try:
             steer_class = Navigator._steering[behaviour]
         except KeyError:
             print('**WARNING** Behaviour %s is not available.' % behaviour)
             return False
-        newsteer = Navigator._steering[behaviour](self.vehicle, *args)
-        # If this behaviour is already in use, replace the prior instance.
-        # TODO: We can probably improve this by manually iterating.
-        try:
-            behi = [type(beh) for beh in self.active_behaviours].index(steer_class)
-            self.active_behaviours[behi] = newsteer
-        # Otherwise, add the new behaviour to the active list, and see below.
-        except ValueError:
-            self.active_behaviours.append(newsteer)
+        newsteer = steer_class(self.vehicle, *args)
+        # If this behaviour isn't already in use, mark for later sorting.
+        if behaviour not in self.active_behaviours:
             # If we're using budgeted force, this ensures the extended list of
             # active_behaviours gets sorted by priority before the next update.
             # Since multiple new behaviours are often added simultaenously,
             # this ensures we only need a single sort.
             if self.force_update == Navigator.compute_force_budgeted:
                 self.force_update = Navigator.sort_budget_priorities
+        self.active_behaviours[behaviour] = newsteer
+
+    def pause_steering(self, behaviour):
+        """Temporarilily turns off a steering behaviour, to be resumed later.
+
+        Args:
+            behaviour(string): Name of the behaviour to be paused.
+        """
+        try:
+            beh = self.active_behaviours.pop(behaviour)
+        except KeyError:
+            print('**WARNING** Behaviour %s is not active; ignoring pause.' % behaviour)
+            return False
+        self.paused_behaviours[behaviour] = beh
+        return True
+
+    def resume_steering(self, behaviour):
+        """Reactivates a previously paused behaviour with prior targets.
+
+        Args:
+            behaviour(string): Name of the behaviour to be resumed.
+        """
+        try:
+            beh = self.paused_behaviours.pop(behaviour)
+        except KeyError:
+            print('**WARNING** Behaviour %s is not paused; ignoring resume.' % behaviour)
+            return False
+        self.active_behaviours[behaviour] = beh
+        if self.force_update == Navigator.compute_force_budgeted:
+            self.force_update = Navigator.sort_budget_priorities
+        return True
 
     def update(self, delta_t=1.0):
         """Update neighbors if needed; compute/apply steering force and move."""
@@ -1025,7 +1058,7 @@ class Navigator(object):
         """
         self.steering_force.zero()
         # Iterate over active behaviours and accumulate force from each
-        for behaviour in self.active_behaviours:
+        for behaviour in self.active_behaviours.values():
             self.steering_force += behaviour.force()
 
     def compute_force_budgeted(self):
@@ -1036,8 +1069,7 @@ class Navigator(object):
         """
         self.steering_force.zero()
         budget = self.vehicle.maxforce
-        for behaviour in self.active_behaviours:
-            # If so, call the behaviour's force_ function
+        for behaviour in self.active_behaviours.values():
             newforce = behaviour.force()
             newnorm = newforce.norm()
             if budget > newnorm:
@@ -1062,7 +1094,9 @@ class Navigator(object):
         One can also call this manually to immediately perform the sort. In any
         case, the force_update is then reset to compute_force_budgeted.
         """
-        self.active_behaviours.sort(key=PRIORITY_KEY)
+        self.sorted_behaviours = OrderedDict(sorted(self.active_behaviours.items(),
+                                                    key=PRIORITY_KEY))
+        self.active_behaviours = self.sorted_behaviours
         self.force_update = Navigator.compute_force_budgeted
 
     def update_neighbors(self, vehlist=[]):
@@ -1103,31 +1137,7 @@ class Navigator(object):
 ##########################
 
 #
-#    def pause(self, steering_type):
-#        """Temporarilily turns off a steering behaviour, storing targets for later.
-#
-#        Parameters
-#        ----------
-#        steering_type: string
-#            Name of the behaviour to be paused.
-#
-#        Returns
-#        -------
-#        boolean
-#            True if the pause was successful, False otherwise.
-#        """
-#        # If behaviour has not been properly activated, warn and exit.
-#        try:
-#            self.inactive_targets[steering_type] = self.targets[steering_type]
-#        except KeyError:
-#            logging.debug('Warning: Behaviour %s has not been initialized. Ignoring pause.' % steering_type)
-#            return False
-#        # Otherwise, pause until later resumed.
-#        del self.targets[steering_type]
-#        self.status[steering_type] = False
-#        self.set_priorities()
-#        logging.debug('%s paused.' % steering_type)
-#        return True
+
 #
 #    def resume(self, steering_type):
 #        """Turns on a previously paused behaviour, using old targets.
