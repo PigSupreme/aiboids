@@ -23,9 +23,6 @@ except ImportError:
 INF = float('inf')
 
 from aiboids.point2d import Point2d
-
-from aiboids.steering import SteeringBehavior
-
 from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS
 
 # Point2d functions return radians, but pygame wants degrees. The negative

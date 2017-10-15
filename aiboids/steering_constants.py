@@ -1,6 +1,12 @@
 # steering_constants.py
 """
 Default values of constants for vehicles and steering behaviours.
+
+Todo:
+    Finish documenting default constants.
+
+Todo:
+    Flocking behaviour is very erratic. Compare with old code and fix!
 """
 
 from __future__ import print_function
@@ -28,40 +34,58 @@ RIGIDBODY2D_MAXTORQUE = 75.0
 ## Steering defaults ##
 #######################
 
-#: Used by FLEE; ignore the point if it's too far away
-FLEE_PANIC_SQ = float('inf')
-
-#: This contols the gradual deceleration for ARRIVE behavior.
-#: Larger values will cause more gradual deceleration.
+#: ARRIVE global tweaking: larger values give more gradual deceleration.
 ARRIVE_DECEL_TWEAK = 10.0
+#: Default ARRIVE hesitance on a per-instance basis
+ARRIVE_DEFAULT_HESITANCE = 2.0
 
-#: Used by EVADE; we ignore the predator if it is too far away.
-EVADE_PANIC_SQ = 160**2
+#: Default forward distance to center of WANDER circle
+WANDER_DISTANCE = 30.0
+#: Default radius of WANDER circle
+WANDER_RADIUS = 25.0
+#: Default jitter of WANDER circle
+WANDER_JITTER = 15.0
 
 #: This controls the size of an object detection box for AVOID obstacles.
 #: Length in front of vehicle is 100%-200% of this.
-AVOID_MIN_LENGTH = 25
-
+OBSTACLEAVOID_MIN_LENGTH = 25
 #: Tweaking constant for braking force of AVOID obstacles.
-AVOID_BRAKE_WEIGHT = 2.0
-
-#: WALLAVOID: Proportional length of side whiskers relative to front whisker.
-WALLAVOID_WHISKER_SCALE = 0.8
+OBSTACLEAVOID_BRAKE_WEIGHT = 2.0
 
 #: TAKECOVER: For stalking, set this to cos^2(theta), where theta is the max
 #: angle from target's front vector. The stalker will not hide unless within
 #: this angle of view.
-TAKECOVER_STALK_T = 0.1
+TAKECOVER_STALK_COS = 2**(.5)  # cos(45 degrees)
+#:
+TAKECOVER_STALK_DSQ = 100**2
+#:
+TAKECOVER_EVADE_MULT = 1.5
+#:
+TAKECOVER_ARRIVE_HESITANCE = 1.0
+
+#: WALLAVOID: Proportional length of side whiskers relative to front whisker.
+WALLAVOID_SIDE_SCALE = 0.8
+
+#: This is cos(10 degrees)
+PURSUE_POUNCE_COS = 0.966
+#:
+PURSUE_POUNCE_DISTANCE = 100.0
 
 #: FOLLOW the leader uses ARRIVE with this hesitance, for smooth formations.
 FOLLOW_ARRIVE_HESITANCE = 1.5
+
+#: EVADE ignores the predator beyond this distance
+EVADE_PANIC_DIST = 160.0
+
+#: GUARD uses this hesitance to arrive at the guard point.
+GUARD_HESITANCE = 1.0
 
 #: SteeringPath will treat consecutive waypoints that are closer than this
 #: as duplicates, and remove them from the path.
 PATH_EPSILON_SQ = 10.0**2
 
 #: Used by PATHFOLLOW/RESUME to determine when we're close enough to a waypoint.
-WAYPOINT_TOLERANCE_SQ = 10.0**2
+WAYPOINT_RADIUS = 10.0
 
 #: Exponential decay constant for PATHRESUME.
 PATHRESUME_DECAY = 0.075
@@ -75,7 +99,7 @@ FLOCKING_RADIUS_MULTIPLIER = 2.0
 FLOCKING_SEPARATE_SCALE = 1.2
 
 #: Cohesion uses ARRIVE with this hesitance, for smooth flocking.
-FLOCKING_COHESHION_HESITANCE = 3.5
+FLOCKING_COHESION_HESITANCE = 3.5
 
 #########################################
 ## Encapsulated imports below
@@ -83,35 +107,66 @@ FLOCKING_COHESHION_HESITANCE = 3.5
 
 #: Point-Mass physics defaults.
 BASEPOINTMASS2D_DEFAULTS = {
-        'MASS': POINTMASS2D_MASS,
-        'MAXSPEED': POINTMASS2D_MAXSPEED,
-        'MAXFORCE': POINTMASS2D_MAXFORCE,
-        }
+    'MASS': POINTMASS2D_MASS,
+    'MAXSPEED': POINTMASS2D_MAXSPEED,
+    'MAXFORCE': POINTMASS2D_MAXFORCE,
+    }
 
 #: Additional Rigid Body physics defaults.
 SIMPLERIGIDBODY2D_DEFAULTS = {
-        'INERTIA':  RIGIDBODY2D_INERTIA,
-        'MAXOMEGA': RIGIDBODY2D_MAXOMEGA,
-        'MAXTORQUE': RIGIDBODY2D_MAXTORQUE
-        }
+    'INERTIA':  RIGIDBODY2D_INERTIA,
+    'MAXOMEGA': RIGIDBODY2D_MAXOMEGA,
+    'MAXTORQUE': RIGIDBODY2D_MAXTORQUE
+    }
 
 #: Defaults for Steering Behaviours.
 STEERING_DEFAULTS = {
-        'FLEE_PANIC_SQ': FLEE_PANIC_SQ,
-        'ARRIVE_DECEL_TWEAK': ARRIVE_DECEL_TWEAK,
-        'EVADE_PANIC_SQ': EVADE_PANIC_SQ,
-        'FOLLOW_ARRIVE_HESITANCE': FOLLOW_ARRIVE_HESITANCE,
-        'WALLAVOID_WHISKER_SCALE': WALLAVOID_WHISKER_SCALE,
-        'AVOID_BRAKE_WEIGHT': AVOID_BRAKE_WEIGHT,
-        'AVOID_MIN_LENGTH': AVOID_MIN_LENGTH,
-        'TAKECOVER_STALK_T': TAKECOVER_STALK_T,
-        'WAYPOINT_TOLERANCE_SQ': WAYPOINT_TOLERANCE_SQ,
-        'PATH_EPSILON_SQ': PATH_EPSILON_SQ,
-        'PATHRESUME_DECAY': PATHRESUME_DECAY,
-        'FLOCKING_RADIUS_MULTIPLIER': FLOCKING_RADIUS_MULTIPLIER,
-        'FLOCKING_COHESHION_HESITANCE': FLOCKING_COHESHION_HESITANCE,
-        'FLOCKING_SEPARATE_SCALE': FLOCKING_SEPARATE_SCALE
-        }
+    'ARRIVE_DECEL_TWEAK': ARRIVE_DECEL_TWEAK,
+    'ARRIVE_DEFAULT_HESITANCE': ARRIVE_DEFAULT_HESITANCE,
+    'WANDER_DISTANCE': WANDER_DISTANCE,
+    'WANDER_RADIUS': WANDER_RADIUS,
+    'WANDER_JITTER': WANDER_JITTER,
+    'WALLAVOID_SIDE_SCALE': WALLAVOID_SIDE_SCALE,
+    'OBSTACLEAVOID_BRAKE_WEIGHT': OBSTACLEAVOID_BRAKE_WEIGHT,
+    'OBSTACLEAVOID_MIN_LENGTH': OBSTACLEAVOID_MIN_LENGTH,
+    'TAKECOVER_STALK_COS': TAKECOVER_STALK_COS,
+    'TAKECOVER_STALK_DSQ': TAKECOVER_STALK_DSQ,
+    'TAKECOVER_EVADE_MULT': TAKECOVER_EVADE_MULT,
+    'TAKECOVER_ARRIVE_HESITANCE': TAKECOVER_ARRIVE_HESITANCE,
+    'PURSUE_POUNCE_COS': PURSUE_POUNCE_COS,
+    'PURSUE_POUNCE_DISTANCE': PURSUE_POUNCE_DISTANCE,
+    'FOLLOW_ARRIVE_HESITANCE': FOLLOW_ARRIVE_HESITANCE,
+    'EVADE_PANIC_DIST': EVADE_PANIC_DIST,
+    'GUARD_HESITANCE': GUARD_HESITANCE,
+    'WAYPOINT_RADIUS': WAYPOINT_RADIUS,
+    'PATH_EPSILON_SQ': PATH_EPSILON_SQ,
+    'PATHRESUME_DECAY': PATHRESUME_DECAY,
+    'FLOCKING_RADIUS_MULTIPLIER': FLOCKING_RADIUS_MULTIPLIER,
+    'FLOCKING_COHESION_HESITANCE': FLOCKING_COHESION_HESITANCE,
+    'FLOCKING_SEPARATE_SCALE': FLOCKING_SEPARATE_SCALE
+    }
+
+#: Order in which behaviours are considered when using budgeted force:
+PRIORITY_DEFAULTS = [
+    'BRAKE',
+    'WALLAVOID',
+    'OBSTACLEAVOID',
+    'FLOCKSEPARATE',
+    'FLEE',
+    'EVADE',
+    'SEEK',
+    'ARRIVE',
+    'TAKECOVER',
+    'PURSUE',
+    'GUARD',
+    'FOLLOW',
+    'WAYPATHRESUME',
+    'WAYPATHVISIT',
+    'FLOCKCOHESION',
+    'FLOCKALIGN',
+    'FLOWFOLLOW',
+    'WANDER'
+    ]
 
 if __name__ == "__main__":
     print("Steering constants. Import this elsewhere. Default values below.")
