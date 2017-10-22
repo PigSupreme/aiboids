@@ -924,7 +924,7 @@ class FlockAlign(SteeringBehaviour):
                 result += other.front
                 n += 1
         if n > 0:
-            return (1.0//n)*result - self.owner.front
+            return (1.0/n)*result - self.owner.front
         else:
             return ZERO_VECTOR
 
