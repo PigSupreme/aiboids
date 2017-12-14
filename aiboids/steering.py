@@ -350,18 +350,14 @@ class WallAvoid(SteeringBehaviour):
     """
     def __init__(self, owner, front_length, wall_list):
         SteeringBehaviour.__init__(self, owner)
-        # Three whiskers: Front and left/right by 45 degrees
-        # Side whiskers are scaled by WALLAVOID_WHISKER_SCALE
         self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
-        self.whisker_sizes = (front_length, WALLAVOID_SIDE_SCALE, WALLAVOID_SIDE_SCALE)
+        side_length = front_length * WALLAVOID_SIDE_SCALE
+        self.whisker_sizes = (front_length, side_length, side_length)
         self.whisker_num = 3
         self.walls = wall_list
 
     def force(self):
-
         owner = self.owner
-
-        #n = len(whisk_units)
         whisker_tip = self.whisker_num*[0]
         closest_wall = self.whisker_num*[None]
 
