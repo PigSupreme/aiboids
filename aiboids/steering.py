@@ -897,7 +897,7 @@ class FlockSeparate(SteeringBehaviour):
         for other in self.owner.neighbor_list:
             if other is not self.owner:
                 offset = self.owner.pos - other.pos
-                result += (FLOCKING_SEPARATE_SCALE*other.radius/offset.norm())*offset
+                result += (FLOCKING_SEPARATE_SCALE*other.radius/offset.sqnorm())*offset
         return result
 
 
@@ -921,7 +921,7 @@ class FlockAlign(SteeringBehaviour):
         n = 0
         for other in self.owner.neighbor_list:
             if other is not self.owner:
-                result += other.front
+                result += other.vel
                 n += 1
         if n > 0:
             return (1.0/n)*result - self.owner.front
@@ -948,7 +948,7 @@ class FlockCohesion(SteeringBehaviour):
             if other is not self.owner:
                 center += other.pos
                 n += 1
-        try:
+        if n > 0:
             # ARRIVE at the average position of flock neighbors
             target_offset = ((1.0/n)*center - self.owner.pos)
             dist = target_offset.norm()
@@ -958,8 +958,8 @@ class FlockCohesion(SteeringBehaviour):
                     speed = self.owner.maxspeed
                 targetvel = (speed/dist)*target_offset
                 return targetvel - self.owner.vel
-        except ZeroDivisionError:
-            return ZERO_VECTOR
+        # If no neighbors or already at flock center, no force is needed
+        return ZERO_VECTOR
 
 
 ########################################################
