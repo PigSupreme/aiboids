@@ -17,11 +17,9 @@ INF = float('inf')
 sys.path.append('..')
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import load_pygame_image
-from aiboids.vehicle2d import BasePointMass2d, BaseWall2d, SimpleObstacle2d
+from aiboids.vehicle2d import SimpleVehicle2d, BaseWall2d, SimpleObstacle2d
+from aiboids.steering import WaypointPath
 
-ZERO_VECTOR = Point2d(0,0)
-
-import aiboids.steering as steering
 
 if __name__ == "__main__":
     pygame.init()
@@ -57,8 +55,8 @@ if __name__ == "__main__":
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = BasePointMass2d(init_pos[0], 50, init_vel, images['green'])
-    yellow = BasePointMass2d(init_pos[1], 50, init_vel, images['yellow'])
+    green = SimpleVehicle2d(init_pos[0], 50, init_vel, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], 50, init_vel, images['yellow'])
     vehicles = [green, yellow]#, red]
     rgroup = [veh.sprite for veh in vehicles]
 
@@ -90,7 +88,6 @@ if __name__ == "__main__":
 
     # All vehicles avoid obstacles and walls
     for veh in vehicles:
-        steering.Navigator(veh)
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
@@ -112,7 +109,7 @@ if __name__ == "__main__":
 
     # Green (WAYPATHTRAVERSE)
     glist = [green.pos.ntuple] + waylist
-    gpath = steering.WaypointPath(2*[Point2d(*p) for p in glist], False)
+    gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
     green.navigator.set_steering('WAYPATHRESUME', gpath)
     green.waypoint = green.pos
 
@@ -131,7 +128,7 @@ if __name__ == "__main__":
 
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
-            veh.navigator.update()
+            veh.move()
 
         # Update Sprites (via pygame sprite group update)
         allsprites.update(UPDATE_SPEED)

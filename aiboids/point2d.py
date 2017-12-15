@@ -450,6 +450,9 @@ class Point2d(object):
         else:
             raise KeyError("Point2d %s has no component %s" % (self, str(index)))
 
+#: Static zero vector for convenience.
+ZERO_VECTOR = Point2d(0, 0)
+
 def vdot(v1, v2):
     """Dot product of two vectors; functional form.
 

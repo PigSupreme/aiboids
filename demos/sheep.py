@@ -11,17 +11,13 @@ import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint, shuffle
 
-INF = float('inf')
-
 # Note: Adjust this depending on where this file ends up.
 sys.path.append('..')
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import load_pygame_image
-from aiboids.vehicle2d import BasePointMass2d, BaseWall2d, SimpleObstacle2d
+from aiboids.vehicle2d import BaseWall2d, SimpleObstacle2d, SimpleVehicle2d
 
-ZERO_VECTOR = Point2d(0,0)
-
-import aiboids.steering as steering
+INF = float('inf')
 
 if __name__ == "__main__":
     pygame.init()
@@ -55,10 +51,10 @@ if __name__ == "__main__":
     # Flock of sheep and associated pygame sprites
     sheep_list = []
     for i in range(numsheep):
-         sheep = BasePointMass2d(init_pos[i], 40, init_vel[i], images['green'])
-         sheep_list.append(sheep)
+        sheep = SimpleVehicle2d(init_pos[i], 40, init_vel[i], images['green'])
+        sheep_list.append(sheep)
     # ...and your little dog, too!
-    dog = BasePointMass2d(init_pos[numsheep], 40, init_vel[numsheep], images['yellow'])
+    dog = SimpleVehicle2d(init_pos[numsheep], 40, init_vel[numsheep], images['yellow'])
 
     # List of vehicles and sprites for later use
     vehicles = sheep_list + [dog]
@@ -79,10 +75,12 @@ if __name__ == "__main__":
         rgroup.append(obstacle.sprite)
 
     # Static Walls for pygame (screen border only)
-    wall_list = (BaseWall2d((sc_width//2, 10), sc_width-20, 4, Point2d(0,1)),
-                 BaseWall2d((sc_width//2, sc_height-10), sc_width-20, 4, Point2d(0,-1)),
-                 BaseWall2d((10, sc_height//2), sc_height-20, 4, Point2d(1,0)),
-                 BaseWall2d((sc_width-10,sc_height//2), sc_height-20, 4, Point2d(-1,0)))
+    wallspritedata = [pygame.Color(0,0,0)]
+    wall_list = (BaseWall2d((sc_width//2, 10), sc_width-20, 4, Point2d(0,1), wallspritedata),
+                 BaseWall2d((sc_width//2, sc_height-10), sc_width-20, 4, Point2d(0,-1), wallspritedata),
+                 BaseWall2d((10, sc_height//2), sc_height-20, 4, Point2d(1,0), wallspritedata),
+                 BaseWall2d((sc_width-10,sc_height//2), sc_height-20, 4, Point2d(-1,0), wallspritedata)
+                )
     #wall_list
     for wall in wall_list:
         rgroup.append(wall.sprite)
@@ -98,21 +96,19 @@ if __name__ == "__main__":
     # This demo fails to celebrate its sheep diversity
     # Flock with other sheep and evade the dog
     for sheep in sheep_list:
-         nav = steering.Navigator(sheep)
-         sheep.flockmates = sheep_list
-         nav.set_steering('FLOCKSEPARATE')
-         nav.set_steering('FLOCKALIGN')
-         nav.set_steering('FLOCKCOHESION')
-         nav.set_steering('EVADE', dog, 180)
-         nav.set_steering('WANDER', 250, 10, 3)
+        sheep.flockmates = sheep_list
+        sheep.navigator.set_steering('FLOCKSEPARATE')
+        sheep.navigator.set_steering('FLOCKALIGN')
+        sheep.navigator.set_steering('FLOCKCOHESION')
+        sheep.navigator.set_steering('EVADE', dog, 180)
+        sheep.navigator.set_steering('WANDER', 250, 10, 3)
 
     # No rule says a dog can't override default physics!
     dog.maxspeed, dog.radius = 10.0, 50
     dog.flockmates = sheep_list
-    nav = steering.Navigator(dog)
-    nav.set_steering('FLOCKSEPARATE')
-    nav.set_steering('FLOCKALIGN')
-    nav.set_steering('WANDER', 200, 25, 6)
+    dog.navigator.set_steering('FLOCKSEPARATE')
+    dog.navigator.set_steering('FLOCKALIGN')
+    dog.navigator.set_steering('WANDER', 200, 25, 6)
 
     # All vehicles avoid obstacles and walls
     for veh in vehicles:
@@ -130,9 +126,9 @@ if __name__ == "__main__":
                 pygame.quit()
                 sys.exit()
 
-        # Update Vehicles via their Navigators (this includes movement)
+        # Update Vehicles (this implicitly checks their Navigators)
         for veh in vehicles:
-            veh.navigator.update(UPDATE_SPEED)
+            veh.move(UPDATE_SPEED)
 
         # Update Sprites (via pygame sprite group update)
         allsprites.update(UPDATE_SPEED)

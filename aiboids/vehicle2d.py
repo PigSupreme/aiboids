@@ -25,6 +25,8 @@ INF = float('inf')
 from aiboids.point2d import Point2d
 from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS
 
+from aiboids.steering import Navigator
+
 # Point2d functions return radians, but pygame wants degrees. The negative
 # is needed since y coordinates increase downwards on screen. Multiply a
 # math radians result by SCREEN_DEG to get pygame screen-appropriate degrees.
@@ -34,6 +36,11 @@ SCREEN_DEG = -57.2957795131
 #: almost zero (squared speed is below this threshold), we skip alignment in
 #: order to avoid jittery behaviour.
 SPEED_EPSILON = .000000001
+
+
+################################################
+### Pygame-specific code starts here
+################################################
 
 def load_pygame_image(name, colorkey=None):
     """Loads image from current working directory for use in pygame.
@@ -72,54 +79,32 @@ def load_pygame_image(name, colorkey=None):
         image_surf.set_colorkey(colorkey, RLEACCEL)
     return image_surf, image_surf.get_rect()
 
-class BaseWall2d(object):
-    """A base class for static wall-type obstacles.
+
+class BaseWall2dSprite(pygame.sprite.Sprite):
+    """Pygame Sprite for rendering BaseWall2d objects.
 
     Args:
-        center (tuple or Point2d): The center of the wall in screen coordinates.
-        length (int): Length of the wall in pixels.
-        thick (int): Thickness of the wall in pixels.
-        f_normal (Point2d): Normal vector out from the front of the wall.
-        color (pygame.Color, optional): Color for rendering. Defaults to (0,0,0)
+        owner (BaseWall2d): The object represented by this sprite.
+        color (pygame.Color): Wall color used for rendering.
     """
+    def __init__(self, owner, color):
+        # Must call pygame's Sprite.__init__ first!
+        pygame.sprite.Sprite.__init__(self)
 
-    class BaseWall2dSprite(pygame.sprite.Sprite):
-        """Pygame Sprite for rendering BaseWall2d objects."""
+        # Set-up sprite image
+        self.image = pygame.Surface((owner.length, owner.thick))
+        self.color = color
+        self.image.fill(self.color)
+        self.rect = self.image.get_rect()
 
-        def __init__(self, owner, color=None):
-            # Must call pygame's Sprite.__init__ first!
-            pygame.sprite.Sprite.__init__(self)
+        # Put into place for rendering
+        self.image = pygame.transform.rotate(self.image, owner.theta)
+        self.rect = self.image.get_rect()
+        self.rect.center = owner.pos[0], owner.pos[1]
 
-            # Set-up sprite image
-            self.image = pygame.Surface((owner.length, owner.thick))
-            self.image.set_colorkey((255,0,255))
-            if color == None:
-                self.color = (0,0,0)
-            self.image.fill(self.color)
-            self.rect = self.image.get_rect()
-
-            # Put into place for rendering
-            self.image = pygame.transform.rotate(self.image, owner.theta)
-            self.rect = self.image.get_rect()
-            self.rect.center = owner.pos[0], owner.pos[1]
-
-        def update(self, delta_t=1.0):
-            """Update placeholder for pygame.Sprite parent class. Does nothing."""
-            pass
-
-    def __init__(self, center, length, thick, f_normal, color=None):
-        # Positional data
-        self.pos = Point2d(center[0], center[1])
-        self.theta = f_normal.angle()*SCREEN_DEG -90
-        self.front = f_normal.unit()
-        self.left = self.front.left_normal()
-        self.rsq = (length/2)**2
-
-        self.length = length
-        self.thick = thick
-
-        # Wall sprite
-        self.sprite = BaseWall2d.BaseWall2dSprite(self, color)
+    def update(self, delta_t=1.0):
+        """Update placeholder for pygame.Sprite parent class. Does nothing."""
+        pass
 
 
 class PointMass2dSprite(pygame.sprite.Sprite):
@@ -151,6 +136,40 @@ class PointMass2dSprite(pygame.sprite.Sprite):
         self.image = pygame.transform.rotate(self.orig, theta)
         self.rect = self.image.get_rect()
         self.rect.center = center
+
+################################################
+### Physical entities start here
+################################################
+
+class BaseWall2d(object):
+    """A base class for static wall-type obstacles.
+
+    Args:
+        center (tuple or Point2d): The center of the wall in screen coordinates.
+        length (int): Length of the wall in pixels.
+        thick (int): Thickness of the wall in pixels.
+        f_normal (Point2d): Normal vector out from the front of the wall.
+        color (pygame.Color, optional): Color for rendering. Defaults to (0,0,0)
+    """
+
+    _spriteclass = BaseWall2dSprite
+    """Default sprite class to use for rendering."""
+
+    def __init__(self, center, length, thick, f_normal, spritedata=None):
+        # Positional data
+        self.pos = Point2d(center[0], center[1])
+        self.theta = f_normal.angle()*SCREEN_DEG -90
+        self.front = f_normal.unit()
+        self.left = self.front.left_normal()
+        self.rsq = (length/2)**2
+
+        self.length = length
+        self.thick = thick
+
+        # Wall sprite
+        if spritedata is not None:
+            self.sprite = BaseWall2d._spriteclass(self, *spritedata)
+
 
 class BasePointMass2d(object):
     """A moving object with rectilinear motion and optional sprite.
@@ -271,17 +290,16 @@ class BasePointMass2d(object):
             self.left = Point2d(-self.front[1], self.front[0])
 
 class SimpleVehicle2d(BasePointMass2d):
-    """Point mass with steering behaviour."""
+    """Point mass with attached Navigator for steering behaviours."""
 
     def __init__(self, position, radius, velocity, spritedata=None):
         BasePointMass2d.__init__(self, position, radius, velocity, spritedata)
-        # Steering behavior class for this object.
-        self.steering = SteeringBehavior(self)
+        self.navigator = Navigator(self)
 
     def move(self, delta_t=1.0):
-        """Compute steering force and update rectilinear motion."""
-        force = self.steering.compute_force()
-        BasePointMass2d.move(self, delta_t, force)
+        """Compute steering force (via Navigator); update rectilinear motion."""
+        self.navigator.update(delta_t)
+        BasePointMass2d.move(self, delta_t, self.navigator.steering_force)
 
 class SimpleObstacle2d(BasePointMass2d):
     """A static obstacle with center and bounding radius."""

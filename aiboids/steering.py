@@ -1049,7 +1049,6 @@ class Navigator(object):
         if self.vehicle.flocking:
             self.update_neighbors(self.vehicle.flockmates)
         self.force_update(self)
-        self.vehicle.move(delta_t, self.steering_force)
 
     def compute_force_simple(self):
         """Updates the current steering force using all active behaviors.

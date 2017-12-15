@@ -15,13 +15,9 @@ INF = float('inf')
 
 # Note: Adjust this depending on where this file ends up.
 sys.path.append('..')
-from aiboids.point2d import Point2d
+from aiboids.point2d import Point2d, ZERO_VECTOR
 from aiboids.vehicle2d import load_pygame_image
-from aiboids.vehicle2d import BasePointMass2d, BaseWall2d, SimpleObstacle2d
-
-ZERO_VECTOR = Point2d(0,0)
-
-import aiboids.steering as steering
+from aiboids.vehicle2d import BasePointMass2d, BaseWall2d, SimpleObstacle2d, SimpleVehicle2d
 
 if __name__ == "__main__":
     pygame.init()
@@ -34,7 +30,7 @@ if __name__ == "__main__":
     randpos = lambda: (randint(30, sc_width-30), randint(30, sc_height-30))
 
     # Update Speed
-    UPDATE_SPEED = 0.2
+    UPDATE_SPEED = 1.0
 
     # Number of vehicles and obstacles
     numveh = 3
@@ -60,9 +56,9 @@ if __name__ == "__main__":
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = BasePointMass2d(init_pos[0], 50, init_vel, images['green'])
-    yellow = BasePointMass2d(init_pos[1], 50, init_vel, images['yellow'])
-    red = BasePointMass2d(init_pos[2], 50, init_vel, images['red'])
+    green = SimpleVehicle2d(init_pos[0], 50, init_vel, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], 50, init_vel, images['yellow'])
+    red = SimpleVehicle2d(init_pos[2], 50, init_vel, images['red'])
     vehicles = [green, yellow, red]
     rgroup = [veh.sprite for veh in vehicles]
 
@@ -101,7 +97,6 @@ if __name__ == "__main__":
 
     # All vehicles avoid obstacles and walls
     for veh in vehicles:
-        steering.Navigator(veh)
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
@@ -125,7 +120,7 @@ if __name__ == "__main__":
 
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
-            veh.navigator.update()
+            veh.move(UPDATE_SPEED)
 
         # Update steering targets every so often
         ticks += 1
