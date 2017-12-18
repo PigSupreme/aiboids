@@ -1,11 +1,11 @@
 # steering.py
 """Module containing AiBoid steering behavior functions (and Navigator).
 
-Specific steering behaviours should subclass SteeringBehaviour. The __init__()
-method must call *SteeringBehaviour.__init__(self, owner)*, which sets the
-owner (and may do other things in the future). The force() method must take
-*self* as the only argument; this is used by the Navigator class for updates.
-See the Seek class for a simple example.
+Many behaviours use constant values, imported from steering_constants.py and
+assigned to local constants within this module. These are chosen based on the
+the physics defaults (also in steering_constants) to give reasonable results,
+but can be overridden with steering.FOO_CONSTANT = new_value. See the sheepdog
+demo for an example of this. [check this]
 
 Todo:
     Flocking behaviours all assume the flock_list remains constant. If we don't
@@ -18,11 +18,7 @@ Todo:
 Todo:
     Fix the rest of the module docstring below, once we've finished changes.
 
-Many behaviours use constant values, imported from steering_constants.py and
-assigned to local constants within this module. These are chosen based on the
-the physics defaults (also in steering_constants) to give reasonable results,
-but can be overridden with steering.FOO_CONSTANT = new_value. See the sheepdog
-demo for an example of this. [check this]
+
 
 TODO: set/pause/resume/stop behaviour functions always call set_priorities()
 regardless of whether budgeted force is actually used. Since we're currently
@@ -44,8 +40,6 @@ from sys import path
 path.append('..')
 from aiboids.point2d import Point2d
 
-import logging
-
 # Math Constants (for readability)
 INF = float('inf')
 from math import sqrt
@@ -58,37 +52,44 @@ rand_gen = Random()
 rand_gen.seed()
 rand_uni = lambda x: rand_gen.uniform(-x, x)
 
+from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
 # Dictionary of default constants for steering behaviours
 from aiboids.steering_constants import STEERING_DEFAULTS
-# TODO: Next two lines are covering for the broken __import__ below:
-for const_name in STEERING_DEFAULTS.keys():
-    vars()[const_name] = STEERING_DEFAULTS[const_name]
-#__import__('aiboids.steering_constants', fromlist=STEERING_DEFAULTS.keys())
+for const_name, const_value in STEERING_DEFAULTS.items():
+    vars()[const_name] = const_value
 
 # Order in which behaviours are considered when using budgeted force:
 from aiboids.steering_constants import PRIORITY_DEFAULTS
 PRIORITY_KEY = lambda x: PRIORITY_DEFAULTS.index(x[0])
 
 class SteeringBehaviour(object):
-    """Base class for all steering behaviours.
+    """Abstract Base Class for all steering behaviours.
 
     Args:
-        owner (vehicle): Compute the steering for this vehicle.
+        owner (vehicle): Steering is computed for this vehicle.
 
-    Subclasses (actual behaviours) should call this method using::
+    Subclass __init__() methods should first call::
 
-        SteeringBehaviour.__init__(self, owner)
+            SteeringBehaviour.__init__(self, owner)
 
-    Where owner is the vehicle that will use the subclass behaviour.
+    Where owner is the vehicle that will use the behaviour. This sets the owner
+    locally (and may do other things in the future).
+
+    Subclasses must implement the force() method with *self* as the only
+    argument; this is used by the Navigator class for updates.
+
+    See the Seek class for a simple example.
     """
+    __metaclass__ = ABCMeta
     def __init__(self, owner):
         self.owner = owner
 
+    @abstractmethod
     def force(self):
         """Compute the owner's steering force for this behaviour."""
-        raise NotImplementedError
+        pass
 
 
 class Seek(SteeringBehaviour):
@@ -216,7 +217,6 @@ class ObstacleAvoid(SteeringBehaviour):
     This projects a box in front of the owner and tries to find an obstacle
     for which collision is imminent (not always the closest obstacle). The
     owner will attempt to steer around that obstacle.
-
     """
     def __init__(self, owner, obstacle_list):
         SteeringBehaviour.__init__(self, owner)
@@ -263,6 +263,13 @@ class ObstacleAvoid(SteeringBehaviour):
 class TakeCover(SteeringBehaviour):
     """TAKECOVER from another target vehicle behind a nearby obstacle.
 
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        target (BasePointMass2d): The vehicle we try to hide from.
+        obs_list (list of BasePointMass2d): List of obstacles for hiding.
+        max_range (float): Hiding points further than this value are ignored.
+        stalk (boolean, optional): If True, only hide when we are in front of the target.
+
     Owner attempts to find a position that will put an obstacle between itself
     and some other vehicle. If such a point cannot be found nearby (within
     max_range of the owner), EVADE the target predator instead.
@@ -273,13 +280,6 @@ class TakeCover(SteeringBehaviour):
 
     Todo:
         Consider moving stalk to a seperate behaviour.
-
-    Args:
-        owner (SimpleVehicle2d): The vehicle computing this force.
-        target (BasePointMass2d): The vehicle we try to hide from.
-        obs_list (list of BasePointMass2d): List of obstacles for hiding.
-        max_range (float): Hiding points further than this value are ignored.
-        stalk (boolean, optional): If True, only hide when we are in front of the target.
     """
     def __init__(self, owner, target, obstacle_list, max_range, stalk=False):
         SteeringBehaviour.__init__(self, owner)
@@ -965,7 +965,9 @@ class Navigator(object):
     """Helper class for managing steering behaviours.
 
     Args:
-        vehicle (SimpleVehicle2d): The vehicle to be steered."""
+        vehicle (SimpleVehicle2d): The vehicle to be steered.
+        use_budget (boolean): If True (default), use prioritized budgeted force.
+    """
 
     # Dictionary of defined behaviours for later use
     _steering = {beh.__name__.upper(): beh for beh in SteeringBehaviour.__subclasses__()}
@@ -977,6 +979,7 @@ class Navigator(object):
         self.paused_behaviours = dict()
         if use_budget:
             self.force_update = Navigator.compute_force_budgeted
+            self.sorted_behaviours = None
         else:
             self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
@@ -1041,6 +1044,9 @@ class Navigator(object):
     def update(self, delta_t=1.0):
         """Update neighbors if needed; compute/apply steering force and move.
 
+        Args:
+            delta_t (float, pptional): Time since last update; currently unused.
+
         Todo:
             It may be desirable to seperate flocking/nagivation/move updates
             into their own functions, since not all of these may occur at the
@@ -1079,8 +1085,7 @@ class Navigator(object):
                 budget -= newnorm
             else:
                 # Scale newforce to remaining budget, apply, and exit
-                (budget/newnorm)*newforce
-                self.steering_force += newforce
+                self.steering_force += (budget/newnorm)*newforce
                 return self.steering_force
 
         # If any budget is leftover, just return the total force
@@ -1099,6 +1104,7 @@ class Navigator(object):
                                                     key=PRIORITY_KEY))
         self.active_behaviours = self.sorted_behaviours
         self.force_update = Navigator.compute_force_budgeted
+        self.force_update(self)
 
     def update_neighbors(self, vehlist=[]):
         """Populates a list of nearby vehicles, for use with flocking.
