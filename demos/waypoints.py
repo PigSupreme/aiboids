@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Improved TAKECOVER/STALKING steering demo."""
+"""Improved Waypoint steering demo."""
 
 # for python3 compat
 from __future__ import unicode_literals
@@ -9,36 +9,33 @@ from __future__ import division
 
 import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
-from random import randint, shuffle
+from random import randint
 
 INF = float('inf')
 
 # Note: Adjust this depending on where this file ends up.
 sys.path.append('..')
 from aiboids.point2d import Point2d
-from aiboids.vehicle2d import load_pygame_image
-from aiboids.vehicle2d import SimpleVehicle2d, BaseWall2d, SimpleObstacle2d
+from aiboids.vehicle2d import SimpleVehicle2d
 from aiboids.steering import WaypointPath
+
+from aiboids import pgrender
 
 
 if __name__ == "__main__":
-    pygame.init()
+    # Display set-up
+    SCREEN_SIZE = (800,640)
+    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'FLOCKING/EVADE steering demo.')
+    UPDATE_SPEED = 1.0
+    BORDER = 30
 
-    # Display constants
-    size = sc_width, sc_height = 800, 640
-    screen = pygame.display.set_mode(size)
-    pygame.display.set_caption('Patrol/Hiding demo.')
-    bgcolor = (111, 145, 192)
-    randpos = lambda: (randint(30, sc_width-30), randint(30, sc_height-30))
-
-    # Update Speed
-    UPDATE_SPEED = 0.2
+    # Used to generate random positions and velocities for vehicles
+    randpoint = lambda: Point2d(randint(BORDER, SCREEN_SIZE[0]-BORDER), randint(BORDER, SCREEN_SIZE[1]-BORDER))
 
     # Number of vehicles and obstacles
     numveh = 2
-    numtargs = 0
     numobs = 8
-    total = numveh + numtargs + numobs
+    total = numveh + numobs
 
     # Waypoint/path information
     pathlen = 6
@@ -46,42 +43,27 @@ if __name__ == "__main__":
 
     # Load images
     images = dict()
-    images['green'] = load_pygame_image('../images/gpig.png', -1)
-    images['yellow'] = load_pygame_image('../images/ypig.png', -1)
-    images['obstacle'] = load_pygame_image('../images/circle.png', -1)
+    images['green'] = pgrender.load_pygame_image('../images/gpig.png', -1)
+    images['yellow'] = pgrender.load_pygame_image('../images/ypig.png', -1)
+    images['obstacle'] = pgrender.load_pygame_image('../images/circle.png', -1)
 
     # Randomly generate initial placement for vehicles
-    init_pos = [Point2d(*randpos()) for i in range(numveh)]
+    init_pos = [randpoint() for i in range(numveh)]
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
     green = SimpleVehicle2d(init_pos[0], 50, init_vel, images['green'])
     yellow = SimpleVehicle2d(init_pos[1], 50, init_vel, images['yellow'])
-    vehicles = [green, yellow]#, red]
+    vehicles = [green, yellow]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    # Don't ask how this works; it avoids clustering the obstacles
-    yoffset = sc_height//(numobs+1)
-    yvals = list(range(yoffset, sc_height-yoffset, yoffset))
-    shuffle(yvals)
-    obslist = list()
-    for i in range(2*numveh, 2*numveh + numobs):
-        offset = (i+1.0-2*numveh)/(numobs+1)
-        rany = yvals[i-2*numveh]
-        new_pos = Point2d(offset*sc_width, rany)
-        obstacle = SimpleObstacle2d(new_pos, 10, images['obstacle'])
-        obslist.append(obstacle)
-        rgroup.append(obstacle.sprite)
+    obslist, obs_sprites = pgrender.scattered_obstalces(numobs, 10, images['obstacle'], SCREEN_SIZE)
+    rgroup.extend(obs_sprites)
 
-    # Static Walls for pygame (screen border only)
-    wall_list = (BaseWall2d((sc_width//2, 10), sc_width-20, 4, Point2d(0,1)),
-                 BaseWall2d((sc_width//2, sc_height-10), sc_width-20, 4, Point2d(0,-1)),
-                 BaseWall2d((10, sc_height//2), sc_height-20, 4, Point2d(1,0)),
-                 BaseWall2d((sc_width-10,sc_height//2), sc_height-20, 4, Point2d(-1,0)))
-    wall_list = []
-    for wall in wall_list:
-        rgroup.append(wall.sprite)
+    # Static Walls for pygame (near screen boundary only)
+    wall_list, wall_sprites = pgrender.boundary_walls(SCREEN_SIZE)
+    rgroup.extend(wall_sprites)
 
     # Set-up pygame rendering
     allsprites = pygame.sprite.RenderPlain(rgroup)
@@ -91,33 +73,26 @@ if __name__ == "__main__":
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
-    # Green (SEEK demo)
-    #green.navigator.set_steering('ARRIVE', 0.5*Point2d(*size))
-
-    # Yellow (ARRIVE demo)
-    yellow.navigator.set_steering('TAKECOVER', green, obslist, 250, True)
-
     # Randomly-generated list of waypoints for all vehicles, not too close
     # to any obstacles
     waylist = []
     while len(waylist) <= pathlen:
-        newp = (Point2d(*randpos()))
+        newp = randpoint()
         d_min_sq = min([(obs.pos - newp).sqnorm() for obs in obslist])
         if d_min_sq > min_dist_sq:
             waylist.append(newp)
-    waylist.append(green.pos.ntuple)
 
     # Green (WAYPATHTRAVERSE)
-    glist = [green.pos.ntuple] + waylist
+    glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
     green.navigator.set_steering('WAYPATHRESUME', gpath)
     green.waypoint = green.pos
 
-    # Yellow (PATHRESUME)
-#    ylist = [obj[1].pos.ntuple()] + waylist
-#    ypath = WaypointPath([Point2d(*p) for p in ylist],True)
-#    obj[1].steering.set_target(WAYPATHRESUME=[ypath])
-#    obj[1].waypoint = obj[1].pos
+    # Yellow (WAYPATHVISIT)
+    ylist = waylist[::-1] + waylist[-1:]
+    ypath = WaypointPath([Point2d(*p) for p in ylist], True)
+    yellow.navigator.set_steering('WAYPATHVISIT', ypath)
+    yellow.waypoint = yellow.pos
 
     ### Main loop ###
     while 1:
@@ -128,18 +103,14 @@ if __name__ == "__main__":
 
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
-            veh.move()
+            veh.move(UPDATE_SPEED)
 
         # Update Sprites (via pygame sprite group update)
         allsprites.update(UPDATE_SPEED)
-
         pygame.time.delay(20)
 
         # Screen update
         screen.fill(bgcolor)
         pygame.draw.lines(screen, (55,55,55), True, waylist, 2)
-        pygame.draw.line(screen, (55,200,55), green.pos, yellow.pos, 2)
         allsprites.draw(screen)
         pygame.display.flip()
-
-    pygame.time.delay(2000)

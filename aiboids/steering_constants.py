@@ -92,14 +92,14 @@ PATHRESUME_DECAY = 0.075
 
 #: For simplicity, we multiply the vehicle's bounding radius by this constant
 #: to determine the local neighborhood radius for group behaviours.
-FLOCKING_RADIUS_MULTIPLIER = 1.5
+FLOCKING_RADIUS_MULTIPLIER = 3.0
 
 #: Scaling factor for SEPERATE group behaviour.
 #: Larger values give greater seperation force.
-FLOCKING_SEPARATE_SCALE = 1.2
+FLOCKING_SEPARATE_SCALE = 1.8
 
 #: Cohesion essentially ARRIVEs with this hesitance, for smooth flocking.
-FLOCKING_COHESION_HESITANCE = 3.5
+FLOCKING_COHESION_HESITANCE = 2.0
 
 #########################################
 ## Encapsulated imports below
