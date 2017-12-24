@@ -1,5 +1,5 @@
 # aiboids/vehicle2d.py
-"""Wall, Obstacle, Pointmass, Vehicle, classes.
+"""Wall, Obstacle, Pointmass, and Vehicle classes.
 
 * BaseWall2d: Static, one-directional wall segments.
 * BasePointMass2d: Point mass with heading aligned to velocity.
@@ -15,8 +15,9 @@ information to the sprite class.
 Todo:
     Standardize import/update mechanisms for default physics constants.
 
-Todo:
     Replace _spriteclass access by @property?
+
+    Move SPEED_EPSILON to steering_constants.py and import from there?
 """
 
 # for python3 compat
@@ -39,9 +40,7 @@ INF = float('inf')
 #: A BasePointMass2d has velocity-aligned heading. However, if the speed is
 #: almost zero (squared speed is below this threshold), we skip alignment in
 #: order to avoid jittery behaviour.
-#: Todo: Import this value from steering_constants.py ??
-SPEED_EPSILON = .000000001
-
+SPEED_EPSILON = .00000000001
 
 class BaseWall2d(object):
     """A base class for static, wall-type obstacles.
@@ -119,7 +118,7 @@ class BasePointMass2d(object):
         self.maxspeed = BasePointMass2d._PHYSICS_DEFAULTS['MAXSPEED']
         self.maxforce = BasePointMass2d._PHYSICS_DEFAULTS['MAXFORCE']
         if self.__class__._spriteclass and spritedata is not None:
-            self.sprite = self.__class__._spriteclass(self, *spritedata)
+            self.sprite = self.__class__._spriteclass(self, spritedata)
 
 
     def accumulate_force(self, force_vector):
@@ -183,7 +182,7 @@ class SimpleObstacle2d(BasePointMass2d):
     def __init__(self, position, radius, spritedata=None):
         BasePointMass2d.__init__(self, position, radius, Point2d(0,0))
         if self.__class__._spriteclass and spritedata is not None:
-            self.sprite = self.__class__._spriteclass(self, *spritedata)
+            self.sprite = self.__class__._spriteclass(self, spritedata)
 
     def move(self, delta_t=1.0, force_vector=None):
         pass

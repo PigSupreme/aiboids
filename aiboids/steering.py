@@ -4,8 +4,7 @@
 Many behaviours use constant values, imported from steering_constants.py and
 assigned to local constants within this module. These are chosen based on the
 the physics defaults (also in steering_constants) to give reasonable results,
-but can be overridden with steering.FOO_CONSTANT = new_value. See the sheepdog
-demo for an example of this. [check this]
+but can be overridden with steering.FOO_CONSTANT = new_value. [check this]
 
 Todo:
     Flocking behaviours all assume the flock_list remains constant. If we don't

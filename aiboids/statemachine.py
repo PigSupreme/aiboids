@@ -9,16 +9,19 @@ The object `agent` can be given state machine functionality as follows::
 
     fsm = StateMachine(agent, cur=cur_state, glo=glo_state, pre=pre_state)
 
-The keyword arguments are option. This als sets `agent.statemachine` = fsm
-for later convenience. Alternatively, use Statemachine.set_state() later.
+Keyword arguments are optional; Statemachine.set_state() can be used to set
+states at a later time.
 
-Once the state machine is initiliazed, state logic and messaging are done with
-the respective functions::
-    
+Initializing the StateMachine as above sets `agent.statemachine` = fsm for
+later convenience, thus state logic and messaging can be done with the
+respective function calls::
+
     agent.statemachine.update()
     agent.statemachine.handle_msg(message)
-    
-One can, of course, call these methods directly from the StateMachine instance.
+
+One can also call these methods directly from the StateMachine itself.
+
+----
 """
 
 from __future__ import print_function
@@ -93,7 +96,7 @@ class State(object):
                 # setattr(eventhook, "__doc__", "GOAT!")
             # This return value ensures that an Exception is raised if we try
             # to use the decorated function from outside of the given State.
-            # TODO: Instead of print()ing, store for later in a class variable/method? 
+            # TODO: Instead of print()ing, store for later in a class variable/method?
             return None
         else:
             raise ValueError('State event %s not recognized' % eventhook.__name__)

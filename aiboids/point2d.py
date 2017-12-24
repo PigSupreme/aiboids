@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+# aiboids/point2d.py
 """Two-Dimensional Point/Vector class with common operations.
 
 Point2d() vectors support standard vector arithmetic: +, - (unary and binary),
@@ -8,8 +8,9 @@ defined as usual: k*a for the scalar k and vector a.
 
 Many other operations are available; see below for details.
 
-TODO: Better Exception handling for the various arithmetic operators; see the
-code for __mul__ (dot product) for an example of what we should be doing.
+Todo:
+    Better Exception handling for the various arithmetic operators; see the
+    code for __mul__ (dot product) for an example of what we should be doing.
 """
 
 # for python3 compat
@@ -129,7 +130,7 @@ class Point2d(object):
     def __mul__(self, term):
         """Dot product: vector*vector.
 
-        Examples below show the avaiable types of vector/scalar multiplcation.
+        Examples below show the available types of vector/scalar multiplcation.
 
         >>> a = Point2d(1,-2)
         >>> b = Point2d(3,5)

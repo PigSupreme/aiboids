@@ -10,10 +10,9 @@ AiBoids Python
    Generic Vector Code <vpoints>
    Entities and Messaging <base_entity>
    Generic State Machine Code <statemachine>
-   vehicle
-   steering
-   demos/demos
-   steering
+   Vehicles and Steering Behaviours <autonomous>
+   demos/westworld3
+
 
 ToDo List
 ---------
