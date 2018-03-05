@@ -71,7 +71,7 @@ def boid_chevron(radius, color, circle_color=None):
     Returns:
         (pygame.Surface): Image for blitting; same format as pygame display.
     """
-    surf = pygame.Surface((2*radius, 2*radius)).convert()
+    surf = pygame.Surface((2*radius+1, 2*radius+1)).convert()
     surf.fill((255,0,255))
     surf.set_colorkey((255,0,255), RLEACCEL)
     if circle_color:
