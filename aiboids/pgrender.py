@@ -12,8 +12,10 @@ from __future__ import division
 import os
 from random import shuffle
 from sys import path
+from math import sqrt
 
 import pygame
+from pygame.locals import RLEACCEL
 
 path.append('..')
 
@@ -29,6 +31,7 @@ SCREEN_DEG = -57.2957795131
 BG_COLOR = (79, 148, 205)
 WALL_COLOR = (0, 0, 0)
 DRYWALL_COLOR = (211, 211, 211)
+WALL_DATA = [WALL_COLOR, DRYWALL_COLOR]
 
 def load_pygame_image(name, colorkey=None):
     """Loads image from current working directory for use in pygame.
@@ -40,27 +43,60 @@ def load_pygame_image(name, colorkey=None):
             pixel color will be used as the background color.
 
     Returns:
-        (pygame.Surface): Image for blitting, converted to the same format as
-        the pygame display. Alpha channel is removed (check this).
+        (pygame.Surface): Image for blitting; same format as pygame display.
     """
     imagefile = os.path.join(os.getcwd(), name)
     try:
-        image_surf = pygame.image.load(imagefile)
+        image_surf = pygame.image.load(imagefile).convert()
     except pygame.error as message:
         print('Error: Cannot load image file: %s' % name)
         print('Current working directory is: %s' % os.getcwd())
         raise RuntimeError(message)
 
-    # This converts the surface for maximum blitting performance,
-    # including removal of any alpha channel:
-    image_surf = image_surf.convert()
-
     # This sets the background (ignored during blit) color:
     if colorkey is not None:
         if colorkey is -1:
             colorkey = image_surf.get_at((0,0))
-        image_surf.set_colorkey(colorkey, pygame.locals.RLEACCEL)
+        image_surf.set_colorkey(colorkey, RLEACCEL)
     return image_surf
+
+def boid_chevron(radius, color, circle_color=None):
+    """Create a simple chevron image for use in pygame.
+
+    Args:
+        radius (int or float): Radius of the image.
+        color (pygame.Color): Color of the chevron.
+        circle_color (optional): If given, draw the bounding circle with this color.
+
+    Returns:
+        (pygame.Surface): Image for blitting; same format as pygame display.
+    """
+    surf = pygame.Surface((2*radius, 2*radius)).convert()
+    surf.fill((255,0,255))
+    surf.set_colorkey((255,0,255), RLEACCEL)
+    if circle_color:
+        pygame.draw.circle(surf, circle_color, (radius, radius), radius, 1)
+    offset = int(sqrt(2)*radius/2.0)
+    pygame.draw.polygon(surf, color, [(radius,radius), (radius-offset, radius+offset), (2*radius, radius), (radius-offset, radius-offset)])
+    return surf
+
+def obstacle_bumper(radius, color1=(0,0,0), color2=(222,22,22)):
+    """Create a simple bumper image for use in pygame.
+
+    Args:
+        radius (int or float): Radius of the obstalce.
+        color1 (pygame.Color): Color of the inner circle.
+        color2 (pygame.Color): Color of the outer ring.
+
+    Returns:
+        (pygame.Surface): Image for blitting; same format as pygame display.
+    """
+    surf = pygame.Surface((2*radius, 2*radius)).convert()
+    surf.fill((255,0,255))
+    surf.set_colorkey((255,0,255), RLEACCEL)
+    pygame.draw.circle(surf, color1, (radius, radius), radius-2)
+    pygame.draw.circle(surf, color2, (radius, radius), radius-2, 5)
+    return surf
 
 
 class BaseWall2dSprite(pygame.sprite.Sprite):
@@ -158,16 +194,15 @@ def boundary_walls(sc_size, thick=10):
         (list, list): List of BaseWall2d, List of BaseWall2dSprite.
     """
     sc_width, sc_height = sc_size
-    sdata = [WALL_COLOR, DRYWALL_COLOR]
-    wall_list = [BaseWall2d((sc_width//2, thick), sc_width, thick, Point2d(0,1), sdata),
-                 BaseWall2d((sc_width//2, sc_height-thick), sc_width, thick, Point2d(0,-1), sdata),
-                 BaseWall2d((thick, sc_height//2), sc_height, thick, Point2d(1,0), sdata),
-                 BaseWall2d((sc_width-thick,sc_height//2), sc_height, thick, Point2d(-1,0), sdata)
+    wall_list = [BaseWall2d((sc_width//2, thick), sc_width, thick, Point2d(0,1), WALL_DATA),
+                 BaseWall2d((sc_width//2, sc_height-thick), sc_width, thick, Point2d(0,-1), WALL_DATA),
+                 BaseWall2d((thick, sc_height//2), sc_height, thick, Point2d(1,0), WALL_DATA),
+                 BaseWall2d((sc_width-thick,sc_height//2), sc_height, thick, Point2d(-1,0), WALL_DATA)
                 ]
     wall_sprites = [wall.sprite for wall in wall_list]
     return wall_list, wall_sprites
 
-def scattered_obstalces(numobs, radius, obs_image, sc_size):
+def scattered_obstacles(numobs, radius, sc_size):
     """Convenience function for randomly-scattered obstacles and their sprites.
 
     Args:
@@ -191,6 +226,7 @@ def scattered_obstalces(numobs, radius, obs_image, sc_size):
         offset = (i+1)/(numobs+1)
         rany = yvals[i]
         new_pos = Point2d(offset*sc_width, rany)
+        obs_image = obstacle_bumper(radius)
         obstacle = SimpleObstacle2d(new_pos, radius, obs_image)
         obslist.append(obstacle)
     obs_sprites = [obs.sprite for obs in obslist]

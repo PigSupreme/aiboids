@@ -242,6 +242,7 @@ class ObstacleAvoid(SteeringBehaviour):
                     # Find nearest x-intercept of extended bounding circle
                     local_y = diff / owner.left
                     expr = owner.radius + obstacle.radius
+                    # TODO: Check next line, use minus inside sqrt??
                     xval = local_x - sqrt(expr*expr + local_y*local_y)
                     # If this obstacle is closer, update minimum values
                     if xval < xmin:
@@ -250,6 +251,7 @@ class ObstacleAvoid(SteeringBehaviour):
 
         # If there is a closest obstacle, avoid it
         if obs_closest:
+            # TODO: Check if this should be the extended radius
             lr = obs_closest.radius
             lat_scale = (lr - ly)*(2.0 - lr / front_d)
             brake_scale = (lr - lx)*OBSTACLEAVOID_BRAKE_WEIGHT

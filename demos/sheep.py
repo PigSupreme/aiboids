@@ -36,9 +36,8 @@ if __name__ == "__main__":
 
     # Load images
     images = dict()
-    images['green'] = pgrender.load_pygame_image('../images/gpig.png', -1)
-    images['yellow'] = pgrender.load_pygame_image('../images/ypig.png', -1)
-    images['obstacle'] = pgrender.load_pygame_image('../images/circle.png', -1)
+    images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
+    images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
 
     # Randomly generate initial placement for vehicles
     init_pos = [randpoint() for i in range(numveh)]
@@ -47,17 +46,17 @@ if __name__ == "__main__":
     # Flock of sheep and associated pygame sprites
     sheep_list = []
     for i in range(numsheep):
-        sheep = SimpleVehicle2d(init_pos[i], 40, init_vel[i], images['green'])
+        sheep = SimpleVehicle2d(init_pos[i], 20, init_vel[i], images['green'])
         sheep_list.append(sheep)
     # ...and your little dog, too!
-    dog = SimpleVehicle2d(init_pos[numsheep], 40, init_vel[numsheep], images['yellow'])
+    dog = SimpleVehicle2d(init_pos[numsheep], 20, init_vel[numsheep], images['yellow'])
 
     # List of vehicles and sprites for later use
     vehicles = sheep_list + [dog]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstalces(numobs, 10, images['obstacle'], SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)
@@ -79,7 +78,7 @@ if __name__ == "__main__":
         sheep.navigator.set_steering('FLOCKALIGN')
         sheep.navigator.set_steering('FLOCKCOHESION')
         sheep.navigator.set_steering('EVADE', dog, 180)
-        sheep.navigator.set_steering('WANDER', 250, 20, 5)
+        sheep.navigator.set_steering('WANDER', 250, 20, 10)
 
     # No rule says a dog can't override default physics!
     dog.maxspeed, dog.radius = 10.0, 50

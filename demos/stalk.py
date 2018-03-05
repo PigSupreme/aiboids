@@ -37,23 +37,21 @@ if __name__ == "__main__":
 
     # Load images
     images = dict()
-    images['green'] = pgrender.load_pygame_image('../images/gpig.png', -1)
-    images['yellow'] = pgrender.load_pygame_image('../images/ypig.png', -1)
-    images['obstacle'] = pgrender.load_pygame_image('../images/circle.png', -1)
+    images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
+    images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
 
     # Randomly generate initial placement for vehicles
     init_pos = [randpoint() for i in range(numveh)]
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], 50, init_vel, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], 50, init_vel, images['yellow'])
-    #red = BasePointMass2d(init_pos[2], 50, init_vel, images['red'])
+    green = SimpleVehicle2d(init_pos[0], 20, init_vel, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], 20, init_vel, images['yellow'])
     vehicles = [green, yellow]#, red]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstalces(numobs, 10, images['obstacle'], SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)

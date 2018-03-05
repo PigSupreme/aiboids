@@ -40,7 +40,7 @@ INF = float('inf')
 #: A BasePointMass2d has velocity-aligned heading. However, if the speed is
 #: almost zero (squared speed is below this threshold), we skip alignment in
 #: order to avoid jittery behaviour.
-SPEED_EPSILON = .00000000001
+SPEED_EPSILON = 0.1
 
 class BaseWall2d(object):
     """A base class for static, wall-type obstacles.

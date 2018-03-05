@@ -38,10 +38,9 @@ if __name__ == "__main__":
 
     # Load images
     images = dict()
-    images['green'] = pgrender.load_pygame_image('../images/gpig.png', -1)
-    images['yellow'] = pgrender.load_pygame_image('../images/ypig.png', -1)
-    images['red'] = pgrender.load_pygame_image('../images/rpig.png',-1)
-    images['obstacle'] = pgrender.load_pygame_image('../images/circle.png', -1)
+    images['green'] = pgrender.boid_chevron(20, (0,222,0))
+    images['yellow'] = pgrender.boid_chevron(20, (222,222,0))
+    images['red'] = pgrender.boid_chevron(25, (222,0,0))
 
     # Steering behaviour target images (generated here)
     img_targ = pygame.Surface((5,5))
@@ -68,7 +67,7 @@ if __name__ == "__main__":
         rgroup.append(target.sprite)
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstalces(numobs, 10, images['obstacle'], SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)
