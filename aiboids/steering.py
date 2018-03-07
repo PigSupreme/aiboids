@@ -242,18 +242,21 @@ class ObstacleAvoid(SteeringBehaviour):
                     # Find nearest x-intercept of extended bounding circle
                     local_y = diff / owner.left
                     expr = owner.radius + obstacle.radius
-                    # TODO: Check next line, use minus inside sqrt??
-                    xval = local_x - sqrt(expr*expr + local_y*local_y)
-                    # If this obstacle is closer, update minimum values
-                    if xval < xmin:
-                        xmin, lx, ly = xval, local_x, local_y
-                        obs_closest = obstacle
+                    radicand = expr**2 - local_y**2
+                    if radicand > 0:
+                        xval = local_x - sqrt(expr*expr - local_y*local_y)
+                        # If this obstacle is closer, update minimum values
+                        if xval < xmin:
+                            xmin, lx, ly = xval, local_x, local_y
+                            obs_closest = obstacle
 
         # If there is a closest obstacle, avoid it
         if obs_closest:
-            # TODO: Check if this should be the extended radius
-            lr = obs_closest.radius
-            lat_scale = (lr - ly)*(2.0 - lr / front_d)
+            lr = obs_closest.radius + owner.radius
+            if ly >= 0:
+                lat_scale = (ly - lr)*(2.0 - lr / front_d)
+            else:
+                lat_scale = (ly + lr)*(2.0 - lr / front_d)
             brake_scale = (lr - lx)*OBSTACLEAVOID_BRAKE_WEIGHT
             result = (brake_scale)*owner.front + (lat_scale)*owner.left
             return result
