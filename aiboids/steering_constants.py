@@ -18,9 +18,9 @@ from __future__ import print_function
 #: Vehicle mass for rectilinear motion.
 POINTMASS2D_MASS = 1.0
 #: Maximum vehicle speed per rectilinear motion update.
-POINTMASS2D_MAXSPEED = 5.0
+POINTMASS2D_MAXSPEED = 8.0
 #: Maximum force/budget per rectilinear motion update.
-POINTMASS2D_MAXFORCE = 3.5
+POINTMASS2D_MAXFORCE = 6.0
 
 #: Rotational Inertia for rigid-body physics
 RIGIDBODY2D_INERTIA = 1.0
@@ -96,10 +96,10 @@ FLOCKING_RADIUS_MULTIPLIER = 5.0
 
 #: Scaling factor for SEPERATE group behaviour.
 #: Larger values give greater seperation force.
-FLOCKING_SEPARATE_SCALE = 3.0
+FLOCKING_SEPARATE_SCALE = 2.1
 
 #: Cohesion essentially ARRIVEs with this hesitance, for smooth flocking.
-FLOCKING_COHESION_HESITANCE = 2.5
+FLOCKING_COHESION_HESITANCE = 3.5
 
 #########################################
 ## Encapsulated imports below

@@ -21,23 +21,25 @@ INF = float('inf')
 
 if __name__ == "__main__":
     # Display set-up
-    SCREEN_SIZE = (800,640)
+    SCREEN_SIZE = (1024,768)
     screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'FLOCKING/EVADE steering demo.')
-    UPDATE_SPEED = 0.15
+    UPDATE_SPEED = 0.35
     BORDER = 30
 
     # Used to generate random positions and velocities for vehicles
     randpoint = lambda: Point2d(randint(BORDER, SCREEN_SIZE[0]-BORDER), randint(BORDER, SCREEN_SIZE[1]-BORDER))
 
     # Number of vehicles and obstacles
-    numsheep = 16
+    numsheep = 29
     numveh = numsheep + 1   # Extra is the dog
-    numobs = 10
+    numobs = 12
+    sheep_radius = 20
+    dog_radius = 20
 
     # Load images
     images = dict()
-    images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
-    images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
+    images['green'] = pgrender.boid_chevron(sheep_radius, (0,222,0), (0,0,0))
+    images['yellow'] = pgrender.boid_chevron(dog_radius, (222,222,0), (0,0,0))
 
     # Randomly generate initial placement for vehicles
     init_pos = [randpoint() for i in range(numveh)]
@@ -46,10 +48,10 @@ if __name__ == "__main__":
     # Flock of sheep and associated pygame sprites
     sheep_list = []
     for i in range(numsheep):
-        sheep = SimpleVehicle2d(init_pos[i], 20, init_vel[i], images['green'])
+        sheep = SimpleVehicle2d(init_pos[i], sheep_radius, init_vel[i], images['green'])
         sheep_list.append(sheep)
     # ...and your little dog, too!
-    dog = SimpleVehicle2d(init_pos[numsheep], 20, init_vel[numsheep], images['yellow'])
+    dog = SimpleVehicle2d(init_pos[numsheep], dog_radius, init_vel[numsheep], images['yellow'])
 
     # List of vehicles and sprites for later use
     vehicles = sheep_list + [dog]
@@ -70,7 +72,7 @@ if __name__ == "__main__":
 # Navigator set-up starts here
 ##############################
 
-    # This demo fails to celebrate its sheep diversity
+    # This demo still fails to celebrate its sheep diversity
     # Flock with other sheep and evade the dog
     for sheep in sheep_list:
         sheep.flockmates = sheep_list
@@ -78,10 +80,10 @@ if __name__ == "__main__":
         sheep.navigator.set_steering('FLOCKALIGN')
         sheep.navigator.set_steering('FLOCKCOHESION')
         sheep.navigator.set_steering('EVADE', dog, 180)
-        sheep.navigator.set_steering('WANDER', 250, 20, 10)
+        sheep.navigator.set_steering('WANDER', 200, 25, 6)
 
     # No rule says a dog can't override default physics!
-    dog.maxspeed, dog.radius = 10.0, 50
+    dog.maxspeed, dog.radius = 10.0, 30
     dog.flockmates = sheep_list
     dog.navigator.set_steering('FLOCKSEPARATE')
     dog.navigator.set_steering('FLOCKALIGN')
