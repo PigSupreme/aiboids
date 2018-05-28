@@ -35,6 +35,8 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+import logging
+
 from sys import path
 path.append('..')
 from aiboids.point2d import Point2d
@@ -1002,7 +1004,7 @@ class Navigator(object):
         try:
             steer_class = Navigator._steering[behaviour]
         except KeyError:
-            print('**WARNING** Behaviour %s is not available.' % behaviour)
+            logging.warning('set_steering: %s is not available.' % behaviour)
             return False
         newsteer = steer_class(self.vehicle, *args)
         # If this behaviour isn't already in use, mark for later sorting.
@@ -1024,7 +1026,7 @@ class Navigator(object):
         try:
             beh = self.active_behaviours.pop(behaviour)
         except KeyError:
-            print('**WARNING** Behaviour %s is not active; ignoring pause.' % behaviour)
+            logging.info('Behaviour %s is not active; ignoring pause.' % behaviour)
             return False
         self.paused_behaviours[behaviour] = beh
         return True
@@ -1038,7 +1040,7 @@ class Navigator(object):
         try:
             beh = self.paused_behaviours.pop(behaviour)
         except KeyError:
-            print('**WARNING** Behaviour %s is not paused; ignoring resume.' % behaviour)
+            logging.info('Behaviour %s is not paused; ignoring resume.' % behaviour)
             return False
         self.active_behaviours[behaviour] = beh
         if self.force_update == Navigator.compute_force_budgeted:

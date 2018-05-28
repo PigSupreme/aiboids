@@ -48,7 +48,7 @@ WANDER_JITTER = 15.0
 
 #: This controls the size of an object detection box for AVOID obstacles.
 #: Length in front of vehicle is 100%-200% of this.
-OBSTACLEAVOID_MIN_LENGTH = 120
+OBSTACLEAVOID_MIN_LENGTH = 120.0
 #: Tweaking constant for braking force of AVOID obstacles.
 OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 
@@ -57,7 +57,7 @@ OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 #: this angle of view.
 TAKECOVER_STALK_COS = 2**(.5)  # cos(45 degrees)
 #:
-TAKECOVER_STALK_DSQ = 100**2
+TAKECOVER_STALK_DSQ = 100.0**2
 #:
 TAKECOVER_EVADE_MULT = 1.5
 #:
