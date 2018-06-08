@@ -14,10 +14,6 @@ information to the sprite class.
 
 Todo:
     Standardize import/update mechanisms for default physics constants.
-
-    Replace _spriteclass access by @property?
-
-    Move SPEED_EPSILON to steering_constants.py and import from there?
 """
 
 # for python3 compat
@@ -32,15 +28,13 @@ from sys import path
 path.append('..')
 
 from aiboids.point2d import Point2d
-from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS
+from aiboids.steering_constants import SPEED_EPSILON_SQ
+from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS
+from aiboids.steering_constants import SIMPLERIGIDBODY2D_DEFAULTS
 from aiboids.steering import Navigator
 
 INF = float('inf')
 
-#: A BasePointMass2d has velocity-aligned heading. However, if the speed is
-#: almost zero (squared speed is below this threshold), we skip alignment in
-#: order to avoid jittery behaviour.
-SPEED_EPSILON = .000000001
 
 class BaseWall2d(object):
     """A base class for static, wall-type obstacles.
@@ -95,6 +89,15 @@ class BasePointMass2d(object):
         cls._spriteclass = spriteclass
 
     _PHYSICS_DEFAULTS = copy.copy(BASEPOINTMASS2D_DEFAULTS)
+    @classmethod
+    def set_physics_defaults(cls, **kwargs):
+        """Change default physics parameters for this class."""
+        available = cls._PHYSICS_DEFAULTS.keys()
+        for (default, value) in kwargs.items():
+            if default in available and value > 0:
+                cls._PHYSICS_DEFAULTS[default] = value
+            else:
+                print('Warning: Physics default %s is unavailable for %s.' % (default, cls))
 
     def __init__(self, position, radius, velocity, spritedata=None):
         # Basic object physics
@@ -119,7 +122,6 @@ class BasePointMass2d(object):
         self.maxforce = BasePointMass2d._PHYSICS_DEFAULTS['MAXFORCE']
         if self.__class__._spriteclass and spritedata is not None:
             self.sprite = self.__class__._spriteclass(self, spritedata)
-
 
     def accumulate_force(self, force_vector):
         """Add a new force to what's already been accumulated.
@@ -165,7 +167,7 @@ class BasePointMass2d(object):
 
         # Align heading to match our forward velocity. Note that
         # if velocity is very small, skip this to avoid jittering.
-        if self.vel.sqnorm() > SPEED_EPSILON:
+        if self.vel.sqnorm() > SPEED_EPSILON_SQ:
             self.front = self.vel.unit()
             self.left = Point2d(-self.front.y, self.front.x)
 
@@ -200,6 +202,8 @@ class SimpleVehicle2d(BasePointMass2d):
     Use this class for basic steering.Navigator functionality. Calling move()
     will get the current steering force from the Navigator and apply it.
     """
+    _PHYSICS_DEFAULTS = copy.copy(BASEPOINTMASS2D_DEFAULTS)
+
     def __init__(self, position, radius, velocity, spritedata=None):
         BasePointMass2d.__init__(self, position, radius, velocity, spritedata)
         self.navigator = Navigator(self)
@@ -219,8 +223,7 @@ class SimpleRigidBody2d(BasePointMass2d):
         Although this isn't really a point mass in the physical sense, we inherit
         from BasePointMass2d in order to avoid duplicating or refactoring code.
     """
-    # Additional defaults are added to parent class (BasePointMass2d)
-    BasePointMass2d._PHYSICS_DEFAULTS.update(**SIMPLERIGIDBODY2D_DEFAULTS)
+    _PHYSICS_DEFAULTS = copy.copy(SIMPLERIGIDBODY2D_DEFAULTS)
 
     def __init__(self, position, radius, velocity, beta, omega, spritedata=None):
 
@@ -289,18 +292,6 @@ class SimpleRigidBody2d(BasePointMass2d):
         omega = self.omega + alpha
         self.omega = max(min(omega, self.maxomega), -self.maxomega)
 
-def set_physics_defaults(**kwargs):
-    """Change default physics parameters for children of BasePointMass2d.
-
-    Todo:
-        Standardize this function.
-    """
-    available = BasePointMass2d._PHYSICS_DEFAULTS.keys()
-    for (default, value) in kwargs.items():
-        if default in available and value > 0:
-            BasePointMass2d._PHYSICS_DEFAULTS[default] = value
-        else:
-            print('Warning: Physics default %s is unavailable.' % default)
 
 if __name__ == "__main__":
     print("Two-Dimensional Vehicle/Obstacle Classes and Functions. Import this elsewhere.")

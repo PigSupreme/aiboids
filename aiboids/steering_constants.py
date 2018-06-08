@@ -4,9 +4,6 @@ Default values of constants for vehicles and steering behaviours.
 
 Todo:
     Finish documenting default constants.
-
-Todo:
-    Flocking behaviour is very erratic. Compare with old code and fix!
 """
 
 from __future__ import print_function
@@ -14,6 +11,11 @@ from __future__ import print_function
 ########################
 ## Vehicle2d Defaults ##
 ########################
+
+#: A BasePointMass2d has velocity-aligned heading. However, if the speed is
+#: almost zero (squared speed is below this threshold), we skip alignment in
+#: order to avoid jittery behaviour.
+SPEED_EPSILON_SQ = 0.000000001
 
 #: Vehicle mass for rectilinear motion.
 POINTMASS2D_MASS = 1.0
@@ -118,6 +120,7 @@ SIMPLERIGIDBODY2D_DEFAULTS = {
     'MAXOMEGA': RIGIDBODY2D_MAXOMEGA,
     'MAXTORQUE': RIGIDBODY2D_MAXTORQUE
     }
+SIMPLERIGIDBODY2D_DEFAULTS.update(**BASEPOINTMASS2D_DEFAULTS)
 
 #: Defaults for Steering Behaviours.
 STEERING_DEFAULTS = {
@@ -170,6 +173,7 @@ PRIORITY_DEFAULTS = [
 
 if __name__ == "__main__":
     print("Steering constants. Import this elsewhere. Default values below.")
+    print("\n  SPEED_EPSILON_SQ = %s" % SPEED_EPSILON_SQ)
     for dlist in (BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS, STEERING_DEFAULTS):
         print("")
         for k in sorted(dlist):

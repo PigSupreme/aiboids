@@ -1051,7 +1051,7 @@ class Navigator(object):
         """Update neighbors if needed; compute/apply steering force and move.
 
         Args:
-            delta_t (float, pptional): Time since last update; currently unused.
+            delta_t (float, optional): Time since last update; currently unused.
 
         Todo:
             It may be desirable to seperate flocking/nagivation/move updates
