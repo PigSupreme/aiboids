@@ -212,10 +212,9 @@ def scattered_obstacles(numobs, radius, sc_size):
         sc_size (int, int): Width, height of the display area, in pixels.
 
     Returns:
-        (list, list): List of SimpleObstacle2d, List of SimpleObstacle2d.
-
+        (list, list): First list contains the SimpleObstacle2d's; 2nd their sprites.
     Notes:
-        By default, this uses the same sprite class as PointMass2d.
+        By default, this uses the same sprite class as BasePointMass2d.
     """
     sc_width, sc_height = sc_size
     yoffset = sc_height//(numobs+2)
@@ -227,7 +226,7 @@ def scattered_obstacles(numobs, radius, sc_size):
         rany = yvals[i]
         new_pos = Point2d(offset*sc_width, rany)
         obs_image = obstacle_bumper(radius)
-        obstacle = SimpleObstacle2d(new_pos, radius, obs_image)
+        obstacle = SimpleObstacle2d(new_pos, Point2d(0,0), radius, obs_image)
         obslist.append(obstacle)
     obs_sprites = [obs.sprite for obs in obslist]
     return obslist, obs_sprites

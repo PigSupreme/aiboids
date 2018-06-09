@@ -7,13 +7,16 @@
 * SimpleVehicle2d: BasePointMass2d with attached Navigator for steering.
 * SimpleRigidBody2d: (Experimental) mass with basic rotational physics.
 
+
+
 Rendering is done independently of this module, but for convenience each class
 provides a set_spriteclass() class method. Once this is set, the constructors
 above will use the optional *spritedata* parameter to pass through rendering
 information to the sprite class.
 
 Todo:
-    Standardize import/update mechanisms for default physics constants.
+    Consider adding some sample subclasses, perhaps in the demos, with pre-set
+    physics defaults.
 """
 
 # for python3 compat
@@ -29,8 +32,6 @@ path.append('..')
 
 from aiboids.point2d import Point2d
 from aiboids.steering_constants import SPEED_EPSILON_SQ
-from aiboids.steering_constants import BASEPOINTMASS2D_DEFAULTS
-from aiboids.steering_constants import SIMPLERIGIDBODY2D_DEFAULTS
 from aiboids.steering import Navigator
 
 INF = float('inf')
@@ -74,8 +75,11 @@ class BasePointMass2d(object):
 
     Args:
         position (Point2d): Center of mass.
-        radius (float): Bounding radius of the object.
         velocity (Point2d): Velocity vector (initial facing is aligned to this).
+        radius (float): Bounding radius of the object.
+        mass (float): Total mass.
+        maxspeed (float): Maximum speed.
+        maxforce (float): Maximum force available per update.
         spritedata (optional): Extra data for rendering; see module notes.
 
     This provides a minimal base class for a 2D pointmass with bounding radius
@@ -88,38 +92,25 @@ class BasePointMass2d(object):
         """Set the default sprite class used to render this type of object."""
         cls._spriteclass = spriteclass
 
-    _PHYSICS_DEFAULTS = copy.copy(BASEPOINTMASS2D_DEFAULTS)
-    @classmethod
-    def set_physics_defaults(cls, **kwargs):
-        """Change default physics parameters for this class."""
-        available = cls._PHYSICS_DEFAULTS.keys()
-        for (default, value) in kwargs.items():
-            if default in available and value > 0:
-                cls._PHYSICS_DEFAULTS[default] = value
-            else:
-                print('Warning: Physics default %s is unavailable for %s.' % (default, cls))
-
-    def __init__(self, position, radius, velocity, spritedata=None):
-        # Basic object physics
-        self.pos = copy.copy(position)  # Center of object
-        self.radius = radius            # Bounding radius
-        self.vel = copy.copy(velocity)  # Current Velocity
-        self.accumulated_force = Point2d(0,0) # Do not use static ZERO_VECTOR
-
-        # Normalized front vector in world coordinates.
-        # This stays aligned with the object's velocity (using move() below)
+    def __init__(self, position, velocity, radius, mass, maxspeed, maxforce, spritedata=None):
+        # Non-constant Point2d's need to be copied
+        self.pos = copy.copy(position)
+        self.vel = copy.copy(velocity)
+        self.accumulated_force = Point2d(0,0)
+        # Additional values; these should be mostly constant
+        self.radius = float(radius)
+        self.mass = float(mass)
+        self.maxspeed = float(maxspeed)
+        self.maxforce = float(maxforce)
+        # Normalized front vector in world coordinates; aligned with velocity.
         try:
             self.front = velocity.unit()
         except ZeroDivisionError:
-            # If velocity is <0,0>, set facing to screen upwards
-            self.front = Point2d(0,-1)
+            # If velocity is <0,0>, set facing to positive x-axis
+            self.front = Point2d(1.0, 0.0)
         self.left = Point2d(-self.front[1], self.front[0])
 
-        # Movement constraints (defaults from steering_constants.py)
-        ## TODO: Put these in the function argument, perhaps as **kwargs
-        self.mass = BasePointMass2d._PHYSICS_DEFAULTS['MASS']
-        self.maxspeed = BasePointMass2d._PHYSICS_DEFAULTS['MAXSPEED']
-        self.maxforce = BasePointMass2d._PHYSICS_DEFAULTS['MAXFORCE']
+        # Optional sprite data
         if self.__class__._spriteclass and spritedata is not None:
             self.sprite = self.__class__._spriteclass(self, spritedata)
 
@@ -177,16 +168,17 @@ class SimpleObstacle2d(BasePointMass2d):
 
     Args:
         position (Point2d): Center of mass.
+        facing (Point2d): Foward vector, used for rendering only.
         radius (float): Bounding radius of the object.
-        velocity (Point2d): Velocity vector (initial facing is aligned to this).
         spritedata (optional): Extra data for rendering; see module notes.
     """
-    def __init__(self, position, radius, spritedata=None):
-        BasePointMass2d.__init__(self, position, radius, Point2d(0,0))
+    def __init__(self, position, facing, radius, spritedata=None):
+        BasePointMass2d.__init__(self, position, facing, radius, 0.0, 0.0, 0.0, spritedata)
         if self.__class__._spriteclass and spritedata is not None:
             self.sprite = self.__class__._spriteclass(self, spritedata)
 
     def move(self, delta_t=1.0, force_vector=None):
+        """Does nothing; SimpleObstacles are immovable."""
         pass
 
 
@@ -195,17 +187,18 @@ class SimpleVehicle2d(BasePointMass2d):
 
     Args:
         position (Point2d): Center of mass.
-        radius (float): Bounding radius of the object.
         velocity (Point2d): Velocity vector (initial facing is aligned to this).
+        radius (float): Bounding radius of the object.
+        mass (float): Total mass.
+        maxspeed (float): Maximum speed.
+        maxforce (float): Maximum force available per update.
         spritedata (optional): Extra data for rendering; see module notes.
 
     Use this class for basic steering.Navigator functionality. Calling move()
     will get the current steering force from the Navigator and apply it.
     """
-    _PHYSICS_DEFAULTS = copy.copy(BASEPOINTMASS2D_DEFAULTS)
-
-    def __init__(self, position, radius, velocity, spritedata=None):
-        BasePointMass2d.__init__(self, position, radius, velocity, spritedata)
+    def __init__(self, position, velocity, radius, mass, maxspeed, maxforce, spritedata=None):
+        BasePointMass2d.__init__(self, position, velocity, radius, mass, maxspeed, maxforce, spritedata)
         self.navigator = Navigator(self)
 
     def move(self, delta_t=1.0, force_vector=None):
@@ -217,24 +210,36 @@ class SimpleVehicle2d(BasePointMass2d):
 class SimpleRigidBody2d(BasePointMass2d):
     """Moving object with linear and angular motion, with optional sprite.
 
+    Args:
+        position (Point2d): Center of mass.
+        velocity (Point2d): Velocity vector.
+        beta (float): Offset angle between heading/velocity and facing.
+        omega (float): Angular speed.
+        radius (float): Bounding radius of the object.
+        mass (float): Total mass.
+        maxspeed (float): Maximum speed.
+        maxforce (float): Maximum force available per update.
+        inertia (float): Rotational inertia.
+        maxomega (float): Maximum magnitude of angular speed.
+        maxtorque (float): Maximum magnitude of torque per update.
+        spritedata (optional): Extra data for rendering; see module notes.
+
     Notes:
         Still experimental!
 
-        Although this isn't really a point mass in the physical sense, we inherit
-        from BasePointMass2d in order to avoid duplicating or refactoring code.
     """
-    _PHYSICS_DEFAULTS = copy.copy(SIMPLERIGIDBODY2D_DEFAULTS)
-
-    def __init__(self, position, radius, velocity, beta, omega, spritedata=None):
-
+    def __init__(self, position, velocity, beta, omega,
+                 radius, mass, maxspeed, maxforce,
+                 inertia, maxomega, maxtorque,
+                 spritedata=None):
         # Use parent class for non-rotational stuff
-        BasePointMass2d.__init__(self, position, radius, velocity, spritedata)
-
-        # Rotational inertia and rotational velocity (degrees[??] per time)
-        self.inertia = BasePointMass2d._PHYSICS_DEFAULTS['INERTIA']
+        BasePointMass2d.__init__(self, position, velocity,
+                                 radius, mass, maxspeed, maxforce, spritedata=None)
+        # Rotational physics
+        self.inertia = inertia
         self.omega = omega
-        self.maxomega = BasePointMass2d._PHYSICS_DEFAULTS['MAXOMEGA']
-        self.maxtorque = BasePointMass2d._PHYSICS_DEFAULTS['MAXTORQUE']
+        self.maxomega = maxomega
+        self.maxtorque = maxtorque
 
         # Adjust facing (beta is measured relative to direction of velocity)
         self.front = self.front.rotated_by(beta)

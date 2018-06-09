@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
     # Array of vehicles and associated pygame sprites
     image = pgrender.boid_chevron(VEH_RADIUS, (0,222,0), (0,0,0))
-    vehicles = [SimpleVehicle2d(init_pos+SPACING*Point2d(0,i), VEH_RADIUS, init_vel, image) for i in range(numveh)]
+    vehicles = [SimpleVehicle2d(init_pos+SPACING*Point2d(0,i), init_vel, VEH_RADIUS, 1.0, 8.0, 6.0, image) for i in range(numveh)]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacle

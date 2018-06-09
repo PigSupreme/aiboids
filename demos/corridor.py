@@ -40,8 +40,9 @@ if __name__ == "__main__":
     midy = SCREEN_SIZE[1]//2
 
     # Initial placement for vehicles
+    VEH_RADIUS = 20
     LEAD_OFFSET = 100
-    INIT_SPEED = 12
+    INIT_SPEED = 12.0
     WHISKER_FRONT = 25.0
     base_pos = Point2d(OFFSETX, midy)
     base_dir = Point2d(1.0,0.5).unit()
@@ -49,9 +50,8 @@ if __name__ == "__main__":
     init_vel = INIT_SPEED*base_dir
 
     # Vehicle and pygame sprite
-    green_image = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
-    green = SimpleVehicle2d(init_pos, 20, init_vel, green_image)
-    green.maxspeed = INIT_SPEED
+    green_image = pgrender.boid_chevron(VEH_RADIUS, (0,222,0), (0,0,0))
+    green = SimpleVehicle2d(init_pos, init_vel, VEH_RADIUS, 1.0, INIT_SPEED, 6.0, green_image)
     vehicles = [green]
     rgroup = [veh.sprite for veh in vehicles]
 
@@ -105,5 +105,6 @@ if __name__ == "__main__":
                 pygame.quit()
                 b_running = False
 
-    from matplotlib.pyplot import plot
-    plot([p[0] for p in glog], [p[1] for p in glog])
+    import matplotlib.pyplot as plt
+    plt.plot([p[0] for p in glog], [p[1] for p in glog])
+    plt.show()

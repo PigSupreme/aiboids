@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""New SEEK-ARRIVE steering demo."""
+"""SEEK and ARRIVE steering demo."""
 
 # for python3 compat
 from __future__ import unicode_literals
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     numobs = 0
     total = numveh + numtargs + numobs
 
-    # Load images
+    # Images for pygame sprites
     images = dict()
     images['green'] = pgrender.boid_chevron(20, (0,222,0))
     images['yellow'] = pgrender.boid_chevron(20, (222,222,0))
@@ -45,7 +45,6 @@ if __name__ == "__main__":
     # Steering behaviour target images (generated here)
     img_targ = pygame.Surface((5,5))
     img_targ.fill((0,0,0))
-#    img_rect = img_targ.get_rect()
     images['target'] = img_targ
 
     # Randomly generate initial placement for vehicles
@@ -53,16 +52,16 @@ if __name__ == "__main__":
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], 50, init_vel, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], 50, init_vel, images['yellow'])
-    red = SimpleVehicle2d(init_pos[2], 50, init_vel, images['red'])
+    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 8.0, 6.0, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 8.0, 6.0, images['yellow'])
+    red = SimpleVehicle2d(init_pos[2], init_vel, 25, 1.0, 8.0, 6.0, images['red'])
     vehicles = [green, yellow, red]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Steering behaviour targets
     targs = list()
     for i in range(numveh, numveh + numtargs):
-        target = BasePointMass2d(randpoint(), 10, ZERO_VECTOR, images['target'])
+        target = BasePointMass2d(randpoint(), ZERO_VECTOR, 10, 0.0, 0.0, 0.0, images['target'])
         targs.append(target)
         rgroup.append(target.sprite)
 
