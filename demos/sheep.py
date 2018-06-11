@@ -29,7 +29,7 @@ if __name__ == "__main__":
     UPDATE_SPEED = 0.5
     BORDER = 30
 
-    # Used to generate random positions and velocities for vehicles
+    # Used to generate random positions for vehicles
     randpoint = lambda: Point2d(randint(BORDER, SCREEN_SIZE[0]-BORDER), randint(BORDER, SCREEN_SIZE[1]-BORDER))
 
     # Vehicles (sheep/dog) and obstacle information
@@ -46,20 +46,19 @@ if __name__ == "__main__":
     images = dict()
     images['green'] = pgrender.boid_chevron(SHEEP_RADIUS, (0, 222, 0), (0, 0, 0))
     images['yellow'] = pgrender.boid_chevron(DOG_RADIUS, (222, 222, 0), (0, 0, 0))
-
-    # Randomly generate initial placement for vehicles
-    init_pos = [randpoint() for i in range(NUMVEHICLES)]
-    init_vel = [(BORDER*UPDATE_SPEED/10)*randpoint().unit() for i in range(NUMVEHICLES)]
+    
+    # (radius, mass, maxspeed, maxforce, spritedata)
+    SHEEP_DATA = (SHEEP_RADIUS, 1.0, 8.0, 6.0, images['green'])
+    DOG_DATA = (DOG_RADIUS, 1.0, 10.0, 6.0, images['yellow'])
 
     # Flock of sheep and associated pygame sprites
     sheep_list = []
     for i in range(NUMSHEEP):
-        sheep = SimpleVehicle2d(init_pos[i], SHEEP_RADIUS, init_vel[i], images['green'])
+        sheep = SimpleVehicle2d(randpoint(), Point2d(0,0), *SHEEP_DATA)
         sheep_list.append(sheep)
 
-    dog = SimpleVehicle2d(init_pos[NUMSHEEP], DOG_RADIUS, init_vel[NUMSHEEP], images['yellow'])
-    # No rule says a dog can't override default physics!
-    dog.maxspeed = 10.0
+    #...and your little dog, too!
+    dog = SimpleVehicle2d(randpoint(), Point2d(0,0), *DOG_DATA)
 
     # List of vehicles and sprites for later use
     vehicles = sheep_list + [dog]

@@ -4,9 +4,6 @@ Default values of constants for vehicles and steering behaviours.
 
 Todo:
     Finish documenting default constants.
-
-Todo:
-    Flocking behaviour is very erratic. Compare with old code and fix!
 """
 
 from __future__ import print_function
@@ -14,6 +11,11 @@ from __future__ import print_function
 ########################
 ## Vehicle2d Defaults ##
 ########################
+
+#: A BasePointMass2d has velocity-aligned heading. However, if the speed is
+#: almost zero (squared speed is below this threshold), we skip alignment in
+#: order to avoid jittery behaviour.
+SPEED_EPSILON_SQ = 0.000000001
 
 #: Vehicle mass for rectilinear motion.
 POINTMASS2D_MASS = 1.0
@@ -48,7 +50,7 @@ WANDER_JITTER = 15.0
 
 #: This controls the size of an object detection box for AVOID obstacles.
 #: Length in front of vehicle is 100%-200% of this.
-OBSTACLEAVOID_MIN_LENGTH = 120.0
+OBSTACLEAVOID_MIN_LENGTH = 35.0
 #: Tweaking constant for braking force of AVOID obstacles.
 OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 
@@ -62,6 +64,8 @@ TAKECOVER_STALK_DSQ = 100.0**2
 TAKECOVER_EVADE_MULT = 1.5
 #:
 TAKECOVER_ARRIVE_HESITANCE = 1.0
+#:
+TAKECOVER_OBSTACLE_PROXIMITY = 1.5
 
 #: WALLAVOID: Proportional length of side whiskers relative to front whisker.
 WALLAVOID_SIDE_SCALE = 0.8
@@ -118,6 +122,7 @@ SIMPLERIGIDBODY2D_DEFAULTS = {
     'MAXOMEGA': RIGIDBODY2D_MAXOMEGA,
     'MAXTORQUE': RIGIDBODY2D_MAXTORQUE
     }
+SIMPLERIGIDBODY2D_DEFAULTS.update(**BASEPOINTMASS2D_DEFAULTS)
 
 #: Defaults for Steering Behaviours.
 STEERING_DEFAULTS = {
@@ -132,6 +137,7 @@ STEERING_DEFAULTS = {
     'TAKECOVER_STALK_COS': TAKECOVER_STALK_COS,
     'TAKECOVER_STALK_DSQ': TAKECOVER_STALK_DSQ,
     'TAKECOVER_EVADE_MULT': TAKECOVER_EVADE_MULT,
+    'TAKECOVER_OBSTACLE_PROXIMITY': TAKECOVER_OBSTACLE_PROXIMITY,
     'TAKECOVER_ARRIVE_HESITANCE': TAKECOVER_ARRIVE_HESITANCE,
     'PURSUE_POUNCE_COS': PURSUE_POUNCE_COS,
     'PURSUE_POUNCE_DISTANCE': PURSUE_POUNCE_DISTANCE,
@@ -170,6 +176,7 @@ PRIORITY_DEFAULTS = [
 
 if __name__ == "__main__":
     print("Steering constants. Import this elsewhere. Default values below.")
+    print("\n  SPEED_EPSILON_SQ = %s" % SPEED_EPSILON_SQ)
     for dlist in (BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS, STEERING_DEFAULTS):
         print("")
         for k in sorted(dlist):

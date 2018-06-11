@@ -315,7 +315,7 @@ class TakeCover(SteeringBehaviour):
             # Hiding point for this obstacle, is directly opposite the
             # vehicle we're hiding from.
             hide_dir = (obs.pos - self.target.pos).unit()
-            hide_pos = obs.pos + (obs.radius + self.owner.radius)*hide_dir
+            hide_pos = obs.pos + (obs.radius + TAKECOVER_OBSTACLE_PROXIMITY*self.owner.radius)*hide_dir
             hide_dsq = (hide_pos - self.owner.pos).sqnorm()
             if hide_dsq < best_dsq:
                 best_pos = hide_pos
@@ -1051,7 +1051,7 @@ class Navigator(object):
         """Update neighbors if needed; compute/apply steering force and move.
 
         Args:
-            delta_t (float, pptional): Time since last update; currently unused.
+            delta_t (float, optional): Time since last update; currently unused.
 
         Todo:
             It may be desirable to seperate flocking/nagivation/move updates

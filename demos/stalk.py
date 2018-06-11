@@ -45,13 +45,13 @@ if __name__ == "__main__":
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], 20, init_vel, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], 20, init_vel, images['yellow'])
+    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 8.0, 6.0, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 8.0, 6.0, images['yellow'])
     vehicles = [green, yellow]#, red]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 12, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)
@@ -66,17 +66,18 @@ if __name__ == "__main__":
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
-    # Green (SEEK demo)
+    # Green (ARRIVE demo)
     green.navigator.set_steering('ARRIVE', 0.5*Point2d(*SCREEN_SIZE))
 
-    # Yellow (ARRIVE demo)
+    # Yellow (TAKECOVER demo)
     yellow.navigator.set_steering('TAKECOVER', green, obslist, 250, False)
+    yellow.navigator.pause_steering('TAKECOVER')
     yellow.navigator.set_steering('WANDER')
-    yellow.navigator.pause_steering('WANDER')
+
 
     ### Main loop ###
     ticks = 0
-    TARGET_FREQ = 200
+    TARGET_FREQ = 100
     while 1:
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
@@ -90,15 +91,16 @@ if __name__ == "__main__":
         # Update steering targets every so often
         ticks += 1
         if ticks == TARGET_FREQ:
-            # Green tracks yellow
-            new_pos = randpoint()
-            green.navigator.set_steering('ARRIVE', yellow.pos + 50*yellow.front)
-            yellow.navigator.pause_steering('TAKECOVER')
-            yellow.navigator.resume_steering('WANDER')
-        if ticks == 3*TARGET_FREQ:
+            # Green tracks yellow; yellow hides
             green.navigator.set_steering('ARRIVE', yellow.pos - 50*yellow.front)
             yellow.navigator.pause_steering('WANDER')
             yellow.navigator.resume_steering('TAKECOVER')
+            
+        if ticks == 3*TARGET_FREQ:
+            # Green goes to previous yellow; yellow wanders
+            green.navigator.set_steering('ARRIVE', yellow.pos)
+            yellow.navigator.pause_steering('TAKECOVER')
+            yellow.navigator.resume_steering('WANDER')
             ticks = 0
 
         # Update Sprites (via pygame sprite group update)
