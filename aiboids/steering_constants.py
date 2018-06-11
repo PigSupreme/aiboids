@@ -2,8 +2,7 @@
 """
 Default values of constants for vehicles and steering behaviours.
 
-Todo:
-    Finish documenting default constants.
+These values are automatically imported by steering.py and used in the demos.
 """
 
 from __future__ import print_function
@@ -54,26 +53,29 @@ OBSTACLEAVOID_MIN_LENGTH = 35.0
 #: Tweaking constant for braking force of AVOID obstacles.
 OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 
-#: TAKECOVER: For stalking, set this to cos^2(theta), where theta is the max
-#: angle from target's front vector. The stalker will not hide unless within
-#: this angle of view.
-TAKECOVER_STALK_COS = 2**(.5)  # cos(45 degrees)
-#:
-TAKECOVER_STALK_DSQ = 100.0**2
-#:
-TAKECOVER_EVADE_MULT = 1.5
-#:
+#: TAKECOVER: ARRIVE at the hiding spot with this hesitance.
 TAKECOVER_ARRIVE_HESITANCE = 1.0
-#:
+#: To avoid obstacle jitter, our effective bounding radius is multiplied by
+#: this factor when determining a hiding spot.
 TAKECOVER_OBSTACLE_PROXIMITY = 1.5
+#: Instances of TAKECOVER use a maximum distance for the hiding spot. If no
+#: suitable spot can be found, evade the target using a panic radius equal to
+#: this constant times the given maximum distance.
+TAKECOVER_EVADE_MULT = 1.5
+#: For stalking, set this to cos(theta), where theta is the a maximum angle
+#: from target's front vector; this vehicle will hide only when within the
+#: target's given angle of view and close enough (see STALK_DSQ below)
+TAKECOVER_STALK_COS = 2**(.5)  # cos(45 degrees)
+#: For stalking, hide only within a certain distance; see above.
+TAKECOVER_STALK_DSQ = 100.0**2
 
 #: WALLAVOID: Proportional length of side whiskers relative to front whisker.
 WALLAVOID_SIDE_SCALE = 0.8
 
-#: This is cos(10 degrees)
-PURSUE_POUNCE_COS = 0.966
-#:
+#: PURSUE: If prey is "close enough" and coming right at us, just SEEK.
 PURSUE_POUNCE_DISTANCE = 100.0
+#: Cosine of pounce angle; this is approximately cos(10 degrees).
+PURSUE_POUNCE_COS = 0.966
 
 #: FOLLOW the leader uses ARRIVE with this hesitance, for smooth formations.
 FOLLOW_ARRIVE_HESITANCE = 1.5
@@ -175,9 +177,17 @@ PRIORITY_DEFAULTS = [
     ]
 
 if __name__ == "__main__":
-    print("Steering constants. Import this elsewhere. Default values below.")
+    print("Vehicle/Steering constants; import this elsewhere. Default values below.")
     print("\n  SPEED_EPSILON_SQ = %s" % SPEED_EPSILON_SQ)
-    for dlist in (BASEPOINTMASS2D_DEFAULTS, SIMPLERIGIDBODY2D_DEFAULTS, STEERING_DEFAULTS):
-        print("")
-        for k in sorted(dlist):
-            print("  %s = %s" % (k, dlist[k]))
+
+    print("\nBasePointMass2d defaults; currently unused.")
+    for k in sorted(BASEPOINTMASS2D_DEFAULTS):
+        print("  %s = %s" % (k, BASEPOINTMASS2D_DEFAULTS[k]))
+
+    print("\nSimpleRigidBody2d defaults; currently unused.")
+    for k in sorted(BASEPOINTMASS2D_DEFAULTS):
+        print("  %s = %s" % (k, SIMPLERIGIDBODY2D_DEFAULTS[k]))
+
+    print("\nSteering defaults:")
+    for k in sorted(STEERING_DEFAULTS):
+        print("  %s = %s" % (k, STEERING_DEFAULTS[k]))
