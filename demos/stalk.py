@@ -21,33 +21,34 @@ from aiboids import pgrender
 
 if __name__ == "__main__":
     # Display set-up
-    SCREEN_SIZE = (800,640)
+    SCREEN_SIZE = (1024, 768)
     screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'TAKECOVER/STALKING steering demo.')
     BORDER = 30
-    UPDATE_SPEED = 1.0
+    UPDATE_SPEED = 0.5
 
     # Used to generate random positions and velocities for vehicles
     randpoint = lambda: Point2d(randint(BORDER, SCREEN_SIZE[0]-BORDER), randint(BORDER, SCREEN_SIZE[1]-BORDER))
 
     # Number of vehicles and obstacles
-    numveh = 2
-    numtargs = 0
-    numobs = 8
-    total = numveh + numtargs + numobs
+    numveh = 3
+    numobs = 20
+    total = numveh + numobs
 
     # Load images
     images = dict()
     images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
     images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
+    images['purple'] = pgrender.boid_chevron(20, (144,33,222), (0,0,0))
 
     # Randomly generate initial placement for vehicles
     init_pos = [randpoint() for i in range(numveh)]
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 8.0, 6.0, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 8.0, 6.0, images['yellow'])
-    vehicles = [green, yellow]#, red]
+    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 10.0, 6.0, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 7.0, 6.0, images['yellow'])
+    purple = SimpleVehicle2d(init_pos[2], init_vel, 20, 1.0, 7.0, 1.0, images['purple'])
+    vehicles = [green, yellow, purple]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
@@ -66,18 +67,16 @@ if __name__ == "__main__":
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
-    # Green (ARRIVE demo)
-    green.navigator.set_steering('ARRIVE', 0.5*Point2d(*SCREEN_SIZE))
+    # Green (WANDER aimlessly, target of TAKECOVER)
+    green.navigator.set_steering('WANDER', 200, 30, 20)
 
-    # Yellow (TAKECOVER demo)
-    yellow.navigator.set_steering('TAKECOVER', green, obslist, 250, False)
-    yellow.navigator.pause_steering('TAKECOVER')
-    yellow.navigator.set_steering('WANDER')
+    # Yellow (TAKECOVER from Green, rather cowardly)
+    yellow.navigator.set_steering('TAKECOVER', green, obslist, 100.0)
 
+    # Purple (TAKECOVER from Green, with stalking)
+    purple.navigator.set_steering('TAKECOVER', green, obslist, 500.0, stalk=True)
 
     ### Main loop ###
-    ticks = 0
-    TARGET_FREQ = 100
     while 1:
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
@@ -88,24 +87,9 @@ if __name__ == "__main__":
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
 
-        # Update steering targets every so often
-        ticks += 1
-        if ticks == TARGET_FREQ:
-            # Green tracks yellow; yellow hides
-            green.navigator.set_steering('ARRIVE', yellow.pos - 50*yellow.front)
-            yellow.navigator.pause_steering('WANDER')
-            yellow.navigator.resume_steering('TAKECOVER')
-            
-        if ticks == 3*TARGET_FREQ:
-            # Green goes to previous yellow; yellow wanders
-            green.navigator.set_steering('ARRIVE', yellow.pos)
-            yellow.navigator.pause_steering('TAKECOVER')
-            yellow.navigator.resume_steering('WANDER')
-            ticks = 0
-
         # Update Sprites (via pygame sprite group update)
         allsprites.update(UPDATE_SPEED)
-        pygame.time.delay(20)
+        pygame.time.delay(10)
 
         # Screen update
         screen.fill(bgcolor)

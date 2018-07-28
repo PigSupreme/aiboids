@@ -57,7 +57,7 @@ OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 TAKECOVER_ARRIVE_HESITANCE = 1.0
 #: To avoid obstacle jitter, our effective bounding radius is multiplied by
 #: this factor when determining a hiding spot.
-TAKECOVER_OBSTACLE_PROXIMITY = 1.5
+TAKECOVER_OBSTACLE_PROXIMITY = 2.0
 #: Instances of TAKECOVER use a maximum distance for the hiding spot. If no
 #: suitable spot can be found, evade the target using a panic radius equal to
 #: this constant times the given maximum distance.
@@ -65,9 +65,9 @@ TAKECOVER_EVADE_MULT = 1.5
 #: For stalking, set this to cos(theta), where theta is the a maximum angle
 #: from target's front vector; this vehicle will hide only when within the
 #: target's given angle of view and close enough (see STALK_DSQ below)
-TAKECOVER_STALK_COS = 2**(.5)  # cos(45 degrees)
-#: For stalking, hide only within a certain distance; see above.
-TAKECOVER_STALK_DSQ = 100.0**2
+TAKECOVER_STALK_COS = -0.5  # cos(120 degrees)
+#: For stalking, hide only when within a certain distance; see above.
+TAKECOVER_STALK_DSQ = 300.0**2
 
 #: WALLAVOID: Proportional length of side whiskers relative to front whisker.
 WALLAVOID_SIDE_SCALE = 0.8
@@ -94,7 +94,7 @@ PATH_EPSILON_SQ = 10.0**2
 WAYPOINT_RADIUS = 10.0
 
 #: Exponential decay constant for PATHRESUME.
-PATHRESUME_DECAY = 0.075
+PATHRESUME_EXP_DECAY = 0.075
 
 #: For simplicity, we multiply the vehicle's bounding radius by this constant
 #: to determine the local neighborhood radius for group behaviours.
@@ -148,7 +148,7 @@ STEERING_DEFAULTS = {
     'GUARD_HESITANCE': GUARD_HESITANCE,
     'WAYPOINT_RADIUS': WAYPOINT_RADIUS,
     'PATH_EPSILON_SQ': PATH_EPSILON_SQ,
-    'PATHRESUME_DECAY': PATHRESUME_DECAY,
+    'PATHRESUME_EXP_DECAY': PATHRESUME_EXP_DECAY,
     'FLOCKING_RADIUS_MULTIPLIER': FLOCKING_RADIUS_MULTIPLIER,
     'FLOCKING_COHESION_HESITANCE': FLOCKING_COHESION_HESITANCE,
     'FLOCKING_SEPARATE_SCALE': FLOCKING_SEPARATE_SCALE

@@ -85,13 +85,11 @@ if __name__ == "__main__":
     glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
     green.navigator.set_steering('WAYPATHRESUME', gpath)
-    green.waypoint = green.pos
 
     # Yellow (WAYPATHVISIT)
     ylist = waylist[::-1] + waylist[-1:]
     ypath = WaypointPath([Point2d(*p) for p in ylist], True)
     yellow.navigator.set_steering('WAYPATHVISIT', ypath)
-    yellow.waypoint = yellow.pos
 
     ### Main loop ###
     while 1:

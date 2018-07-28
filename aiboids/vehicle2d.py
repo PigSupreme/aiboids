@@ -8,15 +8,10 @@
 * SimpleRigidBody2d: (Experimental) mass with basic rotational physics.
 
 
-
 Rendering is done independently of this module, but for convenience each class
 provides a set_spriteclass() class method. Once this is set, the constructors
 above will use the optional *spritedata* parameter to pass through rendering
 information to the sprite class.
-
-Todo:
-    Consider adding some sample subclasses, perhaps in the demos, with pre-set
-    physics defaults.
 """
 
 # for python3 compat
