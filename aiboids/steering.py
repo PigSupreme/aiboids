@@ -3,7 +3,7 @@
 
 Many behaviours use constant values, imported from steering_constants.py as the
 STEERING_DEFAULTS dictionary. These are chosen based on the physics defaults
- (also in steering_constants) to give reasonable results.
+(also in steering_constants) to give reasonable results.
 
 Todo:
     Best way to override STEERING_DEFAULTS? Many of these constants are used as
@@ -650,34 +650,44 @@ class WaypointPath(object):
     """Helper class for managing path-related behaviour, using waypoints.
 
     Args:
-        waypoints (list of Point2d): Non-empty list of waypoints on this path.
-        is_cyclic (boolean): If set to True, path will automatically cycle. See notes.
+        waypoints (list of Point2d): At least two waypoints. See notes.
+        is_cyclic (boolean): If True, path will automatically cycle. See notes.
 
     Notes:
-        Instances of WaypointPath should be owned by a Navigator instance, but
-        all path-management code is controlled from within this class.
+        When used for vehicle steering, an instance of this class should be
+        owned by a vehicle Navigator instance, but all path-management code is
+        controlled from here. *waypoints*[0] is intended as the starting point
+        of some owner vehicle, and is ignored when the path is reset or cycled.
+        To include this point in a cyclic path (for example, a patrol route
+        that returns to to start), add the point to the end of *waypoints*.
 
-        When using this for vehicle steering, the first waypoint is intended as
-        the starting point of some owner vehicle. The vehicle will *not*
-        automatically return to this point even if is_cyclic is set to True, so
-        add it manually to the end of *waypoints* if a return trip is needed.
+        The *waypoints* list is pre-processed so that any point that is close
+        to its predecessor (measured by _EPSILON_SQ) is ignored. If all points
+        are close, we raise a ValueError.
 
-    Todo:
-        It may be helpful to rewrite this class as a generator.
+    Raises:
+        ValueError: If *waypoints* has fewer than two entries, or all points
+        are close together; see Notes.
     """
-    EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
-    RADIUS = STEERING_DEFAULTS['WAYPOINT_RADIUS']
+    _EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
+    _RADIUS = STEERING_DEFAULTS['WAYPOINT_RADIUS']
 
     def __init__(self, waypoints, is_cyclic=False):
+        if len(waypoints) < 2:
+            raise ValueError('At least two waypoints needed in a path.')
         self.oldway = waypoints[0]
         self.waypoints = []
+        self.wayradius_sq = WaypointPath._RADIUS**2
         prev_wp = self.oldway
 
         # Include only consecutive waypoints that are far enough apart
         for wp in waypoints[1:]:
-            if (prev_wp - wp).sqnorm() >= WaypointPath.EPSILON_SQ:
+            if (prev_wp - wp).sqnorm() >= WaypointPath._EPSILON_SQ:
                 self.waypoints.append(wp)
                 prev_wp = wp
+        # In the excpetional case that all waypoints are close together...
+        if self.waypoints == []:
+            raise ValueError('Cannot initialize path; waypoints are too close.')
 
         # Compute initial segment, see Notes on returning to first waypoint
         self.newway = self.waypoints[0]
@@ -690,34 +700,52 @@ class WaypointPath(object):
 
         self.is_cyclic = is_cyclic
 
-    def reset_from_position(self, start_pos, do_return=False):
+    def reset_from(self, new_start_pos, do_return=False):
         """Reset the next waypoint to the start of this path.
 
         Args:
-            start_pos (Point2d): The new starting point for the path
+            new_start_pos (Point2d): The new starting point for the path.
             do_return (boolean, optional): If set to True, start_pos becomes
                 the final waypoint. See Notes.
 
         Notes:
-            As with the __init__() method, start_pos is intended as the current
+            As with __init__(), new_start_pos is intended as the current
             location of some vehicle, and is not explicitly added as the first
             waypoint. If the path was previously cyclic, we will not return to
             start_pos by default (but the previous waypoints will still continue
             to cycle). To override this, set do_return=True. In either case, if
-            start_pos is within WaypointPath.EPSILON_SQ of the next waypoint,
+            start_pos is within WaypointPath._EPSILON_SQ of the next waypoint,
             we ignore start_pos and use the waypoint instead.
-
-        Todo:
-            Make sure this works for single edges and start_pos close to the
-            the first or last waypoint in a cyclic path.
         """
         self.newway = self.waypoints[0]
         self.wpindex = 0
         # If we're close to the first waypoint, use that wp as start_pos
-        if (start_pos - self.newway).sqnorm() < WaypointPath.EPSILON_SQ:
+        if (new_start_pos - self.newway).sqnorm() < WaypointPath._EPSILON_SQ:
             self.advance()
-        if do_return and (start_pos - self.waypoints[-1]).sqnorm() >= WaypointPath.EPSILON_SQ:
-            self.waypoints.append(start_pos)
+        if do_return and (new_start_pos - self.waypoints[-1]).sqnorm() >= WaypointPath._EPSILON_SQ:
+            self.waypoints.append(new_start_pos)
+
+    def resume_at_nearest_from(self, from_pos, ignore_visited=True):
+        """Find the closest waypoint and follow the path from there; see notes.
+
+        Args:
+            from_pos (Point2d): The new starting point for the path.
+            ignore_visited (boolean): If True (default), only consider those
+                waypoints not yet visited when finding the closest. Has no
+                effect on cyclic paths.
+        """
+        if ignore_visited:
+            start = self.wpindex
+        else:
+            start = 1
+        self.wpindex = min(range(start, len(self.waypoints)), key=lambda i: (self.waypoints[i]-from_pos).sqnorm())
+        self.newway = self.waypoints[self.wpindex]
+        # If we're within the arrive radius of this waypoint, use the next one
+        if (self.newway - from_pos).sqnorm() < self.wayradius_sq:
+            self.advance()
+        else:
+            self.oldway = self.waypoints[self.wpindex - 1]
+
 
     def advance(self):
         """Update our waypoint to the next one in the path.
@@ -774,12 +802,8 @@ class WaypathVisit(SteeringBehaviour):
         In this version; we merely head towards the next waypoint. If there is
         only one waypoint left, we ARRIVE at it. Otherwise, we SEEK. A waypoint
         is visited once the distance to owner is less than *wayradius*.
-
-    Todo:
-        This is less of a behaviour and more of a manager for other behaviours;
-        consider moving its functionality to within the Navigator class.
     """
-    def __init__(self, owner, waypath, wayradius=WaypointPath.RADIUS):
+    def __init__(self, owner, waypath, wayradius=WaypointPath._RADIUS):
         SteeringBehaviour.__init__(self, owner)
         # TODO: If waypath has no waypoints left, ARRIVE won't work?
         self.waypath = waypath
@@ -831,19 +855,15 @@ class WaypathResume(SteeringBehaviour):
         to that waypoint, ignoring the path. Otherwise, follow an exponential
         decay curve asymptotic to the path; although this curve doesn't truly
         pass through the waypoint, it makes computations very quick, especially
-        since we store invk. As above, a waypoint is visited once the distance
+        since we store *invk*. As above, a waypoint is visited once the distance
         to owner is less than *wayradius*, so we don't need to hit the waypoint
         exactly.
-
-    Todo:
-        This is less of a behaviour and more of a manager for other behaviours;
-        consider moving its functionality to within the Navigator class.
     """
     constants = {'EXP_DECAY': STEERING_DEFAULTS['PATHRESUME_EXP_DECAY'],
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
     def __init__(self, owner, waypath, expk=constants['EXP_DECAY'],
-                 wayradius=WaypointPath.RADIUS):
+                 wayradius=WaypointPath._RADIUS):
         SteeringBehaviour.__init__(self, owner)
         self.waypath = waypath
         self.invk = 1.0/expk

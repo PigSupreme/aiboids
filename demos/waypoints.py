@@ -84,11 +84,13 @@ if __name__ == "__main__":
     # Green (WAYPATHTRAVERSE)
     glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
+    gpath.resume_at_nearest_from(green.pos)
     green.navigator.set_steering('WAYPATHRESUME', gpath)
 
-    # Yellow (WAYPATHVISIT)
+    # Yellow (WAYPATHVISIT with cyclic path)
     ylist = waylist[::-1] + waylist[-1:]
     ypath = WaypointPath([Point2d(*p) for p in ylist], True)
+    ypath.resume_at_nearest_from(yellow.pos)
     yellow.navigator.set_steering('WAYPATHVISIT', ypath)
 
     ### Main loop ###
