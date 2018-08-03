@@ -13,25 +13,22 @@ Todo:
     abstract base class.
 
 Todo:
-    Flocking behaviours all assume the flock_list remains constant. If we don't
-    want this, it may be better to have store flock_list on the owner and have
-    it managed externally (perhaps via the owner's Navigator object).
-
-    Another side effect is that each instance of flocking stores its own copy
-    of the flock_list, and this isn't very efficient use of storage.
+    Document keyword arguments; these are usually for overriding default values
+    from steering.constants.py.
 
 Todo:
-    Fix the rest of the module docstring below, once we've finished changes.
+    The __init__() method for each flocking behaviour will automatically set
+    owner.flocking to True; this value is used by Navigator.update() to decide
+    if Navigator.update_neighbors() is called before computing steering force.
+    This was done for convenience, but has some side effects (the most obvious
+    is that update_neighbors() always gets called even if flocking behaviours
+    are paused/removed, and this is a performance issue).
 
+    At the very least, it seems appropriate to move the flocking attribute from
+    the owner vehicle to the Navigator for easier management.
 
-TODO: set/pause/resume/stop behaviour functions always call set_priorities()
-regardless of whether budgeted force is actually used. Since we're currently
-using budgeted force all the time, this issue is pretty much unimportant.
-
-TODO: Updates to self.flocking are handled through set_priorities(), which is
-a sensible thing, since set_priorities() is the function that gets called when
-there is any kind of behaviour change. Make up our minds whether this is truly
-the right approach and change documentation appropriately.
+Todo:
+    See Navigator.update_neighbors() docstring notes for possible updates.
 """
 
 import logging
@@ -86,7 +83,7 @@ class SteeringBehaviour(object):
 
     @abstractmethod
     def force(self):
-        """Compute the owner's steering force for this behaviour."""
+        # Computes the owner's steering force for this behaviour.
         pass
 
 
@@ -190,6 +187,10 @@ class Wander(SteeringBehaviour):
 
     We displace the target point each update by a random vector (whose size is
     limited by *jitter*) and rescale so the target remains on our circle.
+
+    Todo:
+        Give each instance its own random number generator for jitter; this
+        will make testing more reliable.
     """
     constants = {'DEFAULT_DISTANCE' : STEERING_DEFAULTS['WANDER_DISTANCE'],
                  'DEFAULT_RADIUS' : STEERING_DEFAULTS['WANDER_RADIUS'],
@@ -443,20 +444,19 @@ class WallAvoid(SteeringBehaviour):
 
 
 class Pursue(SteeringBehaviour):
-    """PURSUE a moving object.
+    """PURSUE a moving object; the opposite of EVADE.
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         prey (BasePointMass2d): The object we're pursuing.
-        pcos (float, optional): Cosine of the pounce angle, see notes.
-        pdist (float, optional): Pounce distance, see notes.
+        pcos (float, optional): Cosine of the pounce angle, see below.
+        pdist (float, optional): Pounce distance, see below.
 
-    Notes:
-        If the prey is heading our way (we are within a certain angle of
-        the prey's heading) and within a certain distance, simply "pounce"
-        on the prey by SEEKing to its current position. Otherwise, predict
-        the future position of they prey, based on current velocities,
-        and SEEK to that location.
+    If the prey is heading our way (we are within a certain angle of
+    the prey's heading) and within a certain distance, simply "pounce"
+    on the prey by SEEKing to its current position. Otherwise, predict
+    the future position of they prey, based on current velocities,
+    and SEEK to that location.
     """
     constants = {'POUNCE_COS': STEERING_DEFAULTS['PURSUE_POUNCE_COS'],
                  'POUNCE_DISTANCE': STEERING_DEFAULTS['PURSUE_POUNCE_DISTANCE']}
@@ -529,19 +529,12 @@ class Follow(SteeringBehaviour):
 
 
 class Evade(SteeringBehaviour):
-    """EVADE a moving object.
+    """EVADE a moving object; the opposite of PURSUE.
 
         Args:
             owner (SimpleVehicle2d): The vehicle computing this force.
             predator (BasePointMass2d): The object we're evading.
             panic_dist (float): Ignore the predator beyond this distance.
-
-        Notes:
-            If the prey is heading our way (we are within a certain angle of
-            the prey's heading) and within a certain distance, simply "pounce"
-            on the prey by SEEKing to its current position. Otherwise, predict
-            the future position of they prey, based on current velocities,
-            and SEEK to that location.
     """
     constants = {'PANIC_DIST': STEERING_DEFAULTS['EVADE_PANIC_DIST']}
     def __init__(self, owner, predator, panic_dist=constants['PANIC_DIST']):
@@ -650,24 +643,26 @@ class WaypointPath(object):
     """Helper class for managing path-related behaviour, using waypoints.
 
     Args:
-        waypoints (list of Point2d): At least two waypoints. See notes.
-        is_cyclic (boolean): If True, path will automatically cycle. See notes.
+        waypoints (list of Point2d): At least two waypoints; see below.
+        is_cyclic (boolean): If True, path will automatically cycle, returning
+            to *waypoints[1]* after the last waypoint.
 
-    Notes:
-        When used for vehicle steering, an instance of this class should be
-        owned by a vehicle Navigator instance, but all path-management code is
-        controlled from here. *waypoints*[0] is intended as the starting point
-        of some owner vehicle, and is ignored when the path is reset or cycled.
-        To include this point in a cyclic path (for example, a patrol route
-        that returns to to start), add the point to the end of *waypoints*.
+    When used for vehicle steering, an instance of this class should be owned
+    by a vehicle Navigator instance, but all path-management code is controlled
+    from here.
 
-        The *waypoints* list is pre-processed so that any point that is close
-        to its predecessor (measured by _EPSILON_SQ) is ignored. If all points
-        are close, we raise a ValueError.
+    *waypoints[0]* is intended as the starting point of the owner vehicle, and
+    is ignored when the path is reset or cycled. To include this point in a
+    cyclic path (for example, a patrol route that returns to to start), add the
+    starting point as the last element of *waypoints*.
+
+    The *waypoints* list is pre-processed so that any point that is close
+    to its predecessor (measured by _EPSILON_SQ) is ignored. If all points
+    are close, we raise a ValueError.
 
     Raises:
         ValueError: If *waypoints* has fewer than two entries, or all points
-        are close together; see Notes.
+            are close together (as described above).
     """
     _EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
     _RADIUS = STEERING_DEFAULTS['WAYPOINT_RADIUS']
@@ -700,30 +695,26 @@ class WaypointPath(object):
 
         self.is_cyclic = is_cyclic
 
-    def reset_from(self, new_start_pos, do_return=False):
-        """Reset the next waypoint to the start of this path.
+    def restart_from(self, new_start_pos, start_index=0):
+        """Explicitly set the next waypoint and follow the path from there.
 
         Args:
-            new_start_pos (Point2d): The new starting point for the path.
-            do_return (boolean, optional): If set to True, start_pos becomes
-                the final waypoint. See Notes.
+            start_pos (Point2d): Starting location for path following.
+            start_index (positive int): Index of the next waypoint.
 
-        Notes:
-            As with __init__(), new_start_pos is intended as the current
-            location of some vehicle, and is not explicitly added as the first
-            waypoint. If the path was previously cyclic, we will not return to
-            start_pos by default (but the previous waypoints will still continue
-            to cycle). To override this, set do_return=True. In either case, if
-            start_pos is within WaypointPath._EPSILON_SQ of the next waypoint,
-            we ignore start_pos and use the waypoint instead.
+        As with __init__(), start_pos is intended as the current location of
+        some vehicle, and is not explicitly added to the waypoint list.
+
+        Note:
+            If start_pos is close (measured by _EPSILON_SQ) to the given
+            waypoint, we ignore that waypoint and start from the next one.
         """
-        self.newway = self.waypoints[0]
-        self.wpindex = 0
-        # If we're close to the first waypoint, use that wp as start_pos
+        self.newway = self.waypoints[start_index]
+        self.wpindex = start_index
+        # If we're close to the first waypoint, ignore it and use start_pos
         if (new_start_pos - self.newway).sqnorm() < WaypointPath._EPSILON_SQ:
             self.advance()
-        if do_return and (new_start_pos - self.waypoints[-1]).sqnorm() >= WaypointPath._EPSILON_SQ:
-            self.waypoints.append(new_start_pos)
+            self.oldway = new_start_pos
 
     def resume_at_nearest_from(self, from_pos, ignore_visited=True):
         """Find the closest waypoint and follow the path from there; see notes.
@@ -796,43 +787,42 @@ class WaypathVisit(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         waypath (WaypointPath): The path to be followed.
-        wayradius (float): Waypoint radius; see notes.
+        wayradius (float): Waypoint radius; see below.
 
-    Note:
-        In this version; we merely head towards the next waypoint. If there is
-        only one waypoint left, we ARRIVE at it. Otherwise, we SEEK. A waypoint
-        is visited once the distance to owner is less than *wayradius*.
+    A waypoint is visited once the distance to owner is less than *wayradius*.
+    In this version; we steer directly at the next waypoint, even if we are
+    knocked off-course. See WayPathResume for an alternative.
+
+    For the final waypoint, we ARRIVE at it and stay there as long as this
+    behaviour remains active. For previous waypoints, we use SEEK.
     """
     def __init__(self, owner, waypath, wayradius=WaypointPath._RADIUS):
         SteeringBehaviour.__init__(self, owner)
-        # TODO: If waypath has no waypoints left, ARRIVE won't work?
         self.waypath = waypath
         self.wprad_sq = wayradius**2
-        if waypath.num_left() <= 1:
-            self.wayforce = Arrive(owner, waypath.newway)
+        self.nextwaypt = waypath.newway
+        if self.nextwaypt is None:
+            raise ValueError('No more waypoints to visit.')
+        if waypath.num_left() > 1:
+            self.wayforce = Seek(owner, self.nextwaypt)
         else:
-            self.wayforce = Seek(owner, waypath.newway)
+            self.wayforce = Arrive(owner, self.nextwaypt)
+
 
     def force(self):
-        # If no waypoints remain in the path, exit and return zero force.
-        if self.waypath.newway is None:
-            return ZERO_VECTOR
-        # Otherwise, check if we're within distance the next waypoint.
-        # Note: No force is returned if we switch to the next waypoint.
-        if (self.owner.pos - self.waypath.newway).sqnorm() <= self.wprad_sq:
+        # If there's a current destination, check if we're within range of it
+        if self.nextwaypt and (self.owner.pos - self.nextwaypt).sqnorm() <= self.wprad_sq:
             self.waypath.advance()
-            nextwaypt = self.waypath.newway
+            self.nextwaypt = self.waypath.newway
             # If this was the last waypoint in the path, we should already be
             # using ARRIVE, and don't need to change anything. Otherwise we
             # update the steering behaviour to the new waypoint.
-            if nextwaypt is not None:
+            if self.nextwaypt is not None:
                 del self.wayforce
-                if self.waypath.num_left() <= 1:
-                    self.wayforce = Arrive(self.owner, nextwaypt)
+                if self.waypath.num_left() == 1:
+                    self.wayforce = Arrive(self.owner, self.nextwaypt)
                 else:
-                    self.wayforce = Seek(self.owner, nextwaypt)
-            return ZERO_VECTOR
-        # Otherwise, we're still in progress to the current waypoint.
+                    self.wayforce = Seek(self.owner, self.nextwaypt)
         return self.wayforce.force()
 
 
@@ -842,22 +832,21 @@ class WaypathResume(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         waypath (WaypointPath): The path to be followed.
-        expk (positive float): Exponential decay constant; see notes.
-        wayradius (float): Waypoint radius; see notes.
+        expk (positive float): Exponential decay constant; see below.
+        wayradius (float): Waypoint radius; see below.
 
-    Note:
-        If the vehicle is knocked off-course, this will give a balance between
-        returning directly to the current path edge and progressing towards the
-        next waypoint; this is controlled by *expk*; larger values give a more
-        immediate return to the path.
+    If the vehicle is knocked off-course, this will give a balance between
+    returning directly to the current path edge and progressing towards the next
+    waypoint; this is controlled by *expk*. Larger values give a more immediate
+    return to the path.
 
+    Notes:
         If the vehicle has already overshot the next waypoint, we head directly
         to that waypoint, ignoring the path. Otherwise, follow an exponential
         decay curve asymptotic to the path; although this curve doesn't truly
         pass through the waypoint, it makes computations very quick, especially
-        since we store *invk*. As above, a waypoint is visited once the distance
-        to owner is less than *wayradius*, so we don't need to hit the waypoint
-        exactly.
+        since we store *invk*. Since, a waypoint is visited once the we're
+        withint *wayradius*, we don't need to hit the waypoint exactly.
     """
     constants = {'EXP_DECAY': STEERING_DEFAULTS['PATHRESUME_EXP_DECAY'],
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
@@ -925,7 +914,7 @@ class FlowFollow(SteeringBehaviour):
             will attempt to follow this.
         dt (positive float): Time between steering updates.
 
-    Todo:
+    Warning:
         Still experimental. We should probably allow for a variable time step.
     """
     def __init__(self, owner, vel_field, dt=1.0):
@@ -944,10 +933,8 @@ class FlowFollow(SteeringBehaviour):
 ##############################################
 ### Group (flocking) behaviours start here ###
 ##############################################
-# TODO: When initiating flocking, check that owner has a flockmates attribute.
-
 class FlockSeparate(SteeringBehaviour):
-    """Steering force for SEPARATE group behaviour (flocking).
+    """SEPARATE from our neighbors to avoid collisions (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
@@ -976,14 +963,10 @@ class FlockSeparate(SteeringBehaviour):
 
 
 class FlockAlign(SteeringBehaviour):
-    """Steering force for ALIGN group behaviour (flocking).
+    """ALIGN with our neighbors by matching their average velocity (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
-
-    Notes:
-        Unlike(?) traditional boids, we ALIGN with the average of neighbors'
-        velocity vectors. Align with heading (normalize velocity) looked weird.
     """
     def __init__(self, owner):
         SteeringBehaviour.__init__(self, owner)
@@ -1003,7 +986,7 @@ class FlockAlign(SteeringBehaviour):
 
 
 class FlockCohesion(SteeringBehaviour):
-    """Steering force for COHESION group behaviour.
+    """COHESION with our neighbors towards their average position (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
@@ -1046,7 +1029,8 @@ class Navigator(object):
 
     Args:
         vehicle (SimpleVehicle2d): The vehicle to be steered.
-        use_budget (boolean): If True (default), use prioritized budgeted force.
+        use_budget (boolean): If True (default), use prioritized budgeted force,
+            with budget set to vehicle.maxforce
     """
     _FLOCK_SCALE = STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']
     # Dictionary of defined behaviours for later use
@@ -1060,6 +1044,7 @@ class Navigator(object):
         if use_budget:
             self.force_update = Navigator.compute_force_budgeted
             self.sorted_behaviours = None
+            self.force_budget = vehicle.maxforce
         else:
             self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
@@ -1122,40 +1107,32 @@ class Navigator(object):
         return True
 
     def update(self, delta_t=1.0):
-        """Update neighbors if needed; compute/apply steering force and move.
+        """Update neighbors (if needed) and set our new steering force.
 
         Args:
             delta_t (float, optional): Time since last update; currently unused.
-
-        Todo:
-            It may be desirable to seperate flocking/nagivation/move updates
-            into their own functions, since not all of these may occur at the
-            same rate (possibly for performance reasons, for example).
         """
         if self.vehicle.flocking:
             self.update_neighbors(self.vehicle.flockmates)
         self.force_update(self)
 
     def compute_force_simple(self):
-        """Updates the current steering force using all active behaviors.
+        """Compute/update steering force using all active behaviors.
 
         Note:
-            Since the vehicle classes are expected to limit the maximum force
+            Since the BasePoint classes are expected to limit the maximum force
             applied, this function no longer does so.
         """
         self.steering_force.zero()
         # Iterate over active behaviours and accumulate force from each
         for behaviour in self.active_behaviours.values():
             self.steering_force += behaviour.force()
+        return self.steering_force
 
     def compute_force_budgeted(self):
-        """Find prioritized steering force within the vehicle's budget.
-
-        Todo:
-            Vehicle's maxforce is used as the budget. Allow other values?
-        """
+        """Compute/update prioritized steering force within a given budget."""
         self.steering_force.zero()
-        budget = self.vehicle.maxforce
+        budget = self.force_budget
         for behaviour in self.active_behaviours.values():
             newforce = behaviour.force()
             newnorm = newforce.norm()
@@ -1207,9 +1184,6 @@ class Navigator(object):
             Results are stored as owner.neighbor_list to be read later by any
             steering force() functions (mostly flocking) that require neighbor
             information. Run this function before each steering update.
-
-        Todo:
-            See Notes above for possible updates to this function.
         """
         owner = self.vehicle
         n_radius = owner.radius * radius_scale
