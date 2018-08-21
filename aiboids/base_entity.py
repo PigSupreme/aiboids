@@ -350,6 +350,8 @@ def sample_run():
     BaseEntity.update_all()
     po.dispatch_queued()
 
+    # TODO: Add an example using extra message information
+
 if __name__ == "__main__":
     # TODO: Doctests need some tweaking due to order of execution.
     sample_run()

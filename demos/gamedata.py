@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Game-wide constants.
+"""Game-wide constants for WestWorld3 demo.
 
 Game Entities
 -------------
@@ -26,13 +26,15 @@ from enum import Enum
 
 # Enumeration of characters {name: sourcefile}
 Characters = {'MINER_BOB' : 'ent_miner',
-              'WIFE_ELSA' : 'ent_wife'}
+              'WIFE_ELSA' : 'ent_wife',
+              'GOAT_BILLY' : 'ent_goat'
+              }
 
 # Enumeration of locations
 Locations = Enum('Locations', 'SHACK MINE BANK SALOON YARD FIELDS')
 
 # Enumeration of message types
-MsgTypes = Enum('MsgTypes', 'MINER_HOME STEW_READY')
+MsgTypes = Enum('MsgTypes', 'MINER_HOME STEW_READY GOAT_IN_YARD GOAT_SHOO GOAT_OUT')
 
 class GameOver(Exception):
     """Raise this exception to end the game."""

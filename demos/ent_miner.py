@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Miner Entity using simple FSM functionality.
-"""
+"""Miner Entity using simple FSM functionality."""
 
 # for python3 compat
 from __future__ import unicode_literals
@@ -47,8 +46,8 @@ def on_execute(agent):
     """Increase fatigue and dig for gold.
 
     StateChange:
-        * Pockets are Full -> DEPOSIT GOLD
-        * Thirsty -> DRINK_AT_SALOON
+        * Pockets are Full --> DEPOSIT GOLD
+        * Thirsty --> DRINK_AT_SALOON
     """
     agent.add_fatigue(1)
 
@@ -91,8 +90,8 @@ def on_execute(agent):
     """Deposit all the gold being carried, and check for victory.
 
     StateChange:
-    * If work_done (enough money in bank) -> REST_AT_HOME
-    * Otherwise -> DIG_IN_MINE
+    * If work_done (enough money in bank) --> REST_AT_HOME
+    * Otherwise --> DIG_IN_MINE
     """
     deposit = agent.gold
     if deposit > 0:
@@ -201,7 +200,7 @@ def on_execute(agent):
     """Eat that tasty stew and recover some fatigue.
 
     StateChange:
-        update(1) -> revert to previous
+        update(1) --> revert to previous
     """
     print("%s : That's some might fine stew...thank ya much, Elsa!" % agent.name)
     agent.remove_fatigue(5)
@@ -301,3 +300,6 @@ class Miner(BaseEntity):
             return True
         else:
             return False
+
+    def final_score(self):
+        return 'Deposited %d gold nuggets.' % self.bank

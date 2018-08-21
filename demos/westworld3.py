@@ -39,9 +39,16 @@ if __name__ == "__main__":
     # Main Loop
     while 1:
         MASTER_CLOCK.tick()
+        print('=== Clock time is now %d ===' % MASTER_CLOCK.time())
         try:
             BaseEntity.update_all()
             POST_OFFICE.dispatch_queued()
         except GameOver:
             break
+    print("\n === Final Results ===")
     print("Elapsed time: %d clock ticks." % MASTER_CLOCK.time())
+    for entity in ENTITY_LIST:
+        try:
+            print('%s: %s' % (entity.name, entity.final_score()))
+        except:
+            pass
