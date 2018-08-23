@@ -130,7 +130,7 @@ def on_execute(agent):
     """Drink until I've quenched my thirst.
 
     StateChange:
-    * When no longer thirsty -> revert to previous
+    * When no longer thirsty --> revert to previous
     """
     print("%s : Havin' a whiskey...mighty refreshin'!" % agent.name)
     agent.remove_thirst(5)
@@ -162,7 +162,7 @@ def on_execute(agent):
     """Sleep until rested or woken for dinner.
 
     StateChange:
-    * When fully rested -> DIG_IN_MINE
+    * When fully rested --> DIG_IN_MINE
     """
     # Take a nap if not fully rested
     if agent.fatigue > 0:
@@ -177,7 +177,7 @@ def on_msg(agent, message):
     """Wake up when dinner is ready.
 
     Messages:
-    * STEW_READY: If from my spouse, change state -> EAT_STEW
+    * STEW_READY: If from my spouse, change state --> EAT_STEW
     """
     if message.MSG_TYPE == MsgTypes.STEW_READY:
         if message.SEND_ID == agent.spouse_id and agent.location == Locations.SHACK:

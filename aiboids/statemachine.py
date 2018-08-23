@@ -25,6 +25,8 @@ One can also call these methods directly from the StateMachine itself.
 """
 
 from __future__ import print_function
+import logging
+logging.basicConfig(format="%(message)s")
 
 class State(object):
     """Provides the necessary framework for UML states with trigger events.
@@ -85,13 +87,13 @@ class State(object):
         return False
 
     def event(self, eventhook):
-        # This defines the @state.event decorator as described above.
-        if eventhook.__name__ in ('on_enter','on_execute','on_exit','on_msg'):
+        """Defines the @state.event decorator as described above."""
+        if eventhook.__name__ in ('on_enter', 'on_execute', 'on_exit', 'on_msg'):
             setattr(self, eventhook.__name__, eventhook)
             # Note how we can grab the docstring using the decorator!
             if eventhook.__doc__:
-                print("%s.%s() docstring:" % (str(self.name), eventhook.__name__))
-                print(" %s\n" % eventhook.__doc__)
+                logging.info("%s.%s():" % (str(self.name), eventhook.__name__))
+                logging.info(" %s\n" % eventhook.__doc__)
                 # TODO: We can change the docstring, but need to figure out how autodocs can find it.
                 # setattr(eventhook, "__doc__", "GOAT!")
             # This return value ensures that an Exception is raised if we try
@@ -108,7 +110,7 @@ STATE_NONE = State('STATE_NONE')
 @STATE_NONE.event
 def on_enter(agent):
     """Dummy docstring for discovery by @state.event decorator."""
-    print("WARNING: Agent %s entered STATE_NONE" % agent)
+    logging.debug("Agent %s entered STATE_NONE" % agent)
 ##########################################################
 
 class StateMachine(object):
@@ -124,7 +126,7 @@ class StateMachine(object):
 
     Instantiating this class will automatically set agent.statemachine to the
     new instance. Omitting any of the keyword arguments will set their
-    corresponding states to None; these can also be assigned/changed later
+    corresponding states to STATE_NONE; these can be assigned/changed later
     using StateMachine.set_state().
     """
 
@@ -135,13 +137,12 @@ class StateMachine(object):
             if stype in kwargs:
                 setattr(self, stype+'_state', kwargs[stype])
             else:
-                setattr(self, stype+'_state', None)
+                setattr(self, stype+'_state', STATE_NONE)
 
     @property
     def statename(self):
         """Get the name of this state machine's current state."""
-        if self.cur_state:
-            return self.cur_state.name
+        return self.cur_state.name
 
     def set_state(self, *args, **kwargs):
         """Manually set agent's states without triggering state change logic.
@@ -229,10 +230,7 @@ class StateMachine(object):
         if self.cur_state and self.cur_state.on_msg(self.agent, message):
             return True
         # ...but if handling was not done, send to the global state.
-        if self.glo_state and self.glo_state.on_msg(self.agent, message):
-            return True
-        else:
-            return False
+        return self.glo_state and self.glo_state.on_msg(self.agent, message)
 
 def sample_run():
     """Demo based on the classic two-state turnstile FSM."""
@@ -269,8 +267,7 @@ def sample_run():
             agent.statemachine.change_state(TURNSTILE_LOCKED)
     @TURNSTILE_UNLOCKED.event
     def on_exit(agent):
-        """Increment turnstile counter.
-        """
+        """Increment turnstile counter."""
         # Not the best place for this, but an excuse to demo on_exit().
         agent.counter += 1
 #####################################################################
@@ -282,7 +279,7 @@ def sample_run():
     fsm.start()
 
     # Main loop
-    for i in range(1,20):
+    for i in range(1, 20):
         print('\nUpdate %d:' % i)
         if i%5 == 0:
             print('Inserting coin...')

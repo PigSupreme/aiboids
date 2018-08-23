@@ -9,7 +9,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 import logging
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.DEBUG)
+logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 import sys
 sys.path.append('..')

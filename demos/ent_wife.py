@@ -162,7 +162,7 @@ def on_execute(agent):
     """Quickly eat and then go back to housework.
 
     StateChange:
-        * After one update -> DO_HOUSEWORK
+        * After one update --> DO_HOUSEWORK
     """
     print("%s : Eatin' the stew...I outdone myself this time." % agent.name)
     agent.statemachine.change_state(DO_HOUSEWORK)
@@ -198,7 +198,7 @@ def on_execute(agent):
     """Attempt to shoo the goat.
 
     StateChange:
-        Goat shooed -> revert state
+        Target goat no longer in yard --> revert state
     """
     # Check if our target goat is still in the yard
     goat = BaseEntity.by_id(agent.goat_target_id)
