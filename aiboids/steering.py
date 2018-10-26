@@ -17,17 +17,6 @@ Todo:
     from steering.constants.py.
 
 Todo:
-    The __init__() method for each flocking behaviour will automatically set
-    owner.flocking to True; this value is used by Navigator.update() to decide
-    if Navigator.update_neighbors() is called before computing steering force.
-    This was done for convenience, but has some side effects (the most obvious
-    is that update_neighbors() always gets called even if flocking behaviours
-    are paused/removed, and this is a performance issue).
-
-    At the very least, it seems appropriate to move the flocking attribute from
-    the owner vehicle to the Navigator for easier management.
-
-Todo:
     See Navigator.update_neighbors() docstring notes for possible updates.
 """
 
@@ -151,7 +140,7 @@ class Arrive(SteeringBehaviour):
     """
     constants = {'DEFAULT_HESITANCE': STEERING_DEFAULTS['ARRIVE_DEFAULT_HESITANCE'],
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
-                 }
+                }
 
     def __init__(self, owner, target, hesitance=constants['DEFAULT_HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
@@ -946,11 +935,12 @@ class FlockSeparate(SteeringBehaviour):
         computing a sqrt.
     """
     constants = {'FORCE_SCALE': STEERING_DEFAULTS['FLOCKING_SEPARATE_SCALE']}
+    NEEDS_NEIGHBORS = True
 
     def __init__(self, owner, scale=constants['FORCE_SCALE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-        owner.flocking = True
+#        owner.flocking = True
         self.scale = scale
 
     def force(self):
@@ -968,10 +958,12 @@ class FlockAlign(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
     """
+    NEEDS_NEIGHBORS = True
+
     def __init__(self, owner):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-        owner.flocking = True
+#        owner.flocking = True
 
     def force(self):
         result = Point2d(0,0)
@@ -993,11 +985,12 @@ class FlockCohesion(SteeringBehaviour):
     """
     constants = {'HESITANCE': STEERING_DEFAULTS['FLOCKING_COHESION_HESITANCE'],
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
+    NEEDS_NEIGHBORS = True
 
     def __init__(self, owner, hesitance=constants['HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-        owner.flocking = True
+#        owner.flocking = True
         self.hesitance = hesitance*FlockCohesion.constants['DECEL_TWEAK']
 
     def force(self):
@@ -1041,6 +1034,8 @@ class Navigator(object):
         self.steering_force = Point2d(0,0)
         self.active_behaviours = dict()
         self.paused_behaviours = dict()
+        # Used to determine if we need neighbor updates
+        self.active_flocking = 0
         if use_budget:
             self.force_update = Navigator.compute_force_budgeted
             self.sorted_behaviours = None
@@ -1048,7 +1043,6 @@ class Navigator(object):
         else:
             self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
-        vehicle.flocking = False
 
     def set_steering(self, behaviour, *args, **kwargs):
         """Add a new steering behaviour or change existing targets.
@@ -1074,6 +1068,9 @@ class Navigator(object):
             # this ensures we only need a single sort.
             if self.force_update == Navigator.compute_force_budgeted:
                 self.force_update = Navigator.sort_budget_priorities
+            # Update count of active flocking behaviours
+            if hasattr(steer_class,'NEEDS_NEIGHBORS'):
+                self.active_flocking += 1
         self.active_behaviours[behaviour] = newsteer
 
     def pause_steering(self, behaviour):
@@ -1088,6 +1085,8 @@ class Navigator(object):
             logging.info('Behaviour %s is not active; ignoring pause.' % behaviour)
             return False
         self.paused_behaviours[behaviour] = beh
+        if hasattr(beh.__class__, 'NEEDS_NEIGHBORS'):
+            self.active_flocking -= 1
         return True
 
     def resume_steering(self, behaviour):
@@ -1102,8 +1101,11 @@ class Navigator(object):
             logging.info('Behaviour %s is not paused; ignoring resume.' % behaviour)
             return False
         self.active_behaviours[behaviour] = beh
+        # See comments in set_steering for an explanation of this
         if self.force_update == Navigator.compute_force_budgeted:
             self.force_update = Navigator.sort_budget_priorities
+        if hasattr(beh.__class__, 'NEEDS_NEIGHBORS'):
+            self.active_flocking += 1
         return True
 
     def update(self, delta_t=1.0):
@@ -1112,7 +1114,8 @@ class Navigator(object):
         Args:
             delta_t (float, optional): Time since last update; currently unused.
         """
-        if self.vehicle.flocking:
+        # If at least one flocking behaviour is active, update neighbors
+        if self.active_flocking:
             self.update_neighbors(self.vehicle.flockmates)
         self.force_update(self)
 
