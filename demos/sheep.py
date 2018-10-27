@@ -36,6 +36,12 @@ if __name__ == "__main__":
     NUMSHEEP = 29
     SHEEP_RADIUS = 20
     DOG_RADIUS = 20
+    WHISKER_FRONT = SHEEP_RADIUS*1.25
+    WHISKER_SIDES = SHEEP_RADIUS*1.1
+    WALL_WHISKERS = [WHISKER_FRONT*Point2d(1,0),
+                     WHISKER_SIDES*Point2d(1,1).unit(),
+                     WHISKER_SIDES*Point2d(1,-1).unit()
+                     ]
     NUMVEHICLES = NUMSHEEP + 1
     NUMOBSTACLES = 12
 
@@ -46,7 +52,7 @@ if __name__ == "__main__":
     images = dict()
     images['green'] = pgrender.boid_chevron(SHEEP_RADIUS, (0, 222, 0), (0, 0, 0))
     images['yellow'] = pgrender.boid_chevron(DOG_RADIUS, (222, 222, 0), (0, 0, 0))
-    
+
     # (radius, mass, maxspeed, maxforce, spritedata)
     SHEEP_DATA = (SHEEP_RADIUS, 1.0, 8.0, 6.0, images['green'])
     DOG_DATA = (DOG_RADIUS, 1.0, 10.0, 6.0, images['yellow'])
@@ -98,7 +104,7 @@ if __name__ == "__main__":
     # All creatures avoid obstacles and walls
     for veh in vehicles:
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 25.0, wall_list)
+        veh.navigator.set_steering('WALLAVOID', WALL_WHISKERS, wall_list)
 
 ##############################
 # Main loop

@@ -60,17 +60,12 @@ if __name__ == "__main__":
     obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 10, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
-    # Static Walls for pygame (near screen boundary only)
-    wall_list, wall_sprites = pgrender.boundary_walls(SCREEN_SIZE)
-    rgroup.extend(wall_sprites)
-
     # Set-up pygame rendering
     allsprites = pygame.sprite.RenderPlain(rgroup)
 
-    # All vehicles avoid obstacles and walls
+    # All vehicles avoid obstacles
     for veh in vehicles:
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
     # Randomly-generated list of waypoints for all vehicles, not too close
     # to any obstacles

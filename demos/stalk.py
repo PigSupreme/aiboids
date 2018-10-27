@@ -33,26 +33,34 @@ if __name__ == "__main__":
     numveh = 3
     numobs = 20
     total = numveh + numobs
+    VEH_RADIUS = 20
+    WHISKER_FRONT = VEH_RADIUS*1.25
+    WHISKER_SIDES = WHISKER_FRONT*1.1
+    WALL_WHISKERS = [WHISKER_FRONT*Point2d(1,0),
+                     WHISKER_SIDES*Point2d(1,1).unit(),
+                     WHISKER_SIDES*Point2d(1,-1).unit()
+                    ]
+    OBS_RADIUS = 12
 
     # Load images
     images = dict()
-    images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
-    images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
-    images['purple'] = pgrender.boid_chevron(20, (144,33,222), (0,0,0))
+    images['green'] = pgrender.boid_chevron(VEH_RADIUS, (0,222,0), (0,0,0))
+    images['yellow'] = pgrender.boid_chevron(VEH_RADIUS, (222,222,0), (0,0,0))
+    images['purple'] = pgrender.boid_chevron(VEH_RADIUS, (144,33,222), (0,0,0))
 
     # Randomly generate initial placement for vehicles
     init_pos = [randpoint() for i in range(numveh)]
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 10.0, 6.0, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 7.0, 6.0, images['yellow'])
-    purple = SimpleVehicle2d(init_pos[2], init_vel, 20, 1.0, 7.0, 1.0, images['purple'])
+    green = SimpleVehicle2d(init_pos[0], init_vel, VEH_RADIUS, 1.0, 10.0, 6.0, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], init_vel, VEH_RADIUS, 1.0, 7.0, 6.0, images['yellow'])
+    purple = SimpleVehicle2d(init_pos[2], init_vel, VEH_RADIUS, 1.0, 7.0, 1.0, images['purple'])
     vehicles = [green, yellow, purple]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 12, SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, OBS_RADIUS, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)
@@ -65,7 +73,7 @@ if __name__ == "__main__":
     # All vehicles avoid obstacles and walls
     for veh in vehicles:
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
+        veh.navigator.set_steering('WALLAVOID', WALL_WHISKERS, wall_list)
 
     # Green (WANDER aimlessly, target of TAKECOVER)
     green.navigator.set_steering('WANDER', 200, 30, 20)

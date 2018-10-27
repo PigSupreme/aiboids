@@ -69,9 +69,6 @@ TAKECOVER_STALK_COS = -0.5  # cos(120 degrees)
 #: For stalking, hide only when within a certain distance; see above.
 TAKECOVER_STALK_DSQ = 300.0**2
 
-#: WALLAVOID: Proportional length of side whiskers relative to front whisker.
-WALLAVOID_SIDE_SCALE = 0.8
-
 #: PURSUE: If prey is "close enough" and coming right at us, just SEEK.
 PURSUE_POUNCE_DISTANCE = 100.0
 #: Cosine of pounce angle; this is approximately cos(10 degrees).
@@ -133,7 +130,6 @@ STEERING_DEFAULTS = {
     'WANDER_DISTANCE': WANDER_DISTANCE,
     'WANDER_RADIUS': WANDER_RADIUS,
     'WANDER_JITTER': WANDER_JITTER,
-    'WALLAVOID_SIDE_SCALE': WALLAVOID_SIDE_SCALE,
     'OBSTACLEAVOID_BRAKE_WEIGHT': OBSTACLEAVOID_BRAKE_WEIGHT,
     'OBSTACLEAVOID_MIN_LENGTH': OBSTACLEAVOID_MIN_LENGTH,
     'TAKECOVER_STALK_COS': TAKECOVER_STALK_COS,

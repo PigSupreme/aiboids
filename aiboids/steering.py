@@ -361,30 +361,25 @@ class TakeCover(SteeringBehaviour):
 
 
 class WallAvoid(SteeringBehaviour):
-    """WALLAVOID behaviour with three whiskers.
+    """WALLAVOID behaviour using simulated whiskers.
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
-        front_length (float): Length of the forward whisker.
+        whikser_list (list of Point2d): Whisker vectors in owner local space.
         wall_list (list, BaseWall2d): List of walls to test against.
-
-    This uses a virtual whisker in front of the vehicle, and two side
-    whiskers at 45 degrees from the front. The sides are slighly smaller;
-    length is scaled by the WALLAVOID_SIDE_SCALE steering constant.
 
     For each whisker, we find the wall having its point of intersection
     closest to the base of the whisker. If such a wall is detected, it
     contributes a force in the direction of the wall normal, proportional
     to the penetration depth of the whisker.
     """
-    constants = {'SIDE_SCALE': STEERING_DEFAULTS['WALLAVOID_SIDE_SCALE']}
-    def __init__(self, owner, front_length, wall_list, *,
-                 side_scale=constants['SIDE_SCALE']):
+    def __init__(self, owner, whisker_list, wall_list=None):
         SteeringBehaviour.__init__(self, owner)
-        self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
-        side_length = front_length * side_scale
-        self.whisker_sizes = (front_length, side_length, side_length)
-        self.whisker_num = 3
+        #self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
+        #side_length = front_length * side_scale
+        self.whisker_num = len(whisker_list)
+        self.whisker_sizes = [w.norm() for w in whisker_list]
+        self.whisker_dirs = [w.unit() for w in whisker_list]
         self.walls = wall_list
 
     def force(self):
@@ -394,7 +389,7 @@ class WallAvoid(SteeringBehaviour):
 
         # Convert unit vectors for each whisker to global coordinates
         for i in range(self.whisker_num):
-            (u,v) = self.whisker_coords[i]
+            (u,v) = self.whisker_dirs[i]
             whisker_tip[i] = u*owner.front + v*owner.left
 
         # This will hold the shortest distances along each whisker to a wall,

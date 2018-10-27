@@ -33,8 +33,7 @@ if __name__ == "__main__":
     # Number of vehicles and obstacles
     numveh = 3
     numtargs = numveh
-    numobs = 0
-    total = numveh + numtargs + numobs
+    total = numveh + numtargs
 
     # Images for pygame sprites
     images = dict()
@@ -65,21 +64,8 @@ if __name__ == "__main__":
         targs.append(target)
         rgroup.append(target.sprite)
 
-    # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
-    rgroup.extend(obs_sprites)
-
-    # Static Walls for pygame (near screen boundary only)
-    wall_list, wall_sprites = pgrender.boundary_walls(SCREEN_SIZE)
-    rgroup.extend(wall_sprites)
-
     # Set-up pygame rendering
     allsprites = pygame.sprite.RenderPlain(rgroup)
-
-    # All vehicles avoid obstacles and walls
-    for veh in vehicles:
-        veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
     # Green (SEEK demo)
     green.navigator.set_steering('SEEK', targs[0].pos)

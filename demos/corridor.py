@@ -40,10 +40,15 @@ if __name__ == "__main__":
     midy = SCREEN_SIZE[1]//2
 
     # Initial placement for vehicles
-    VEH_RADIUS = 20
+    VEH_RADIUS = 16
     LEAD_OFFSET = 100
     INIT_SPEED = 12.0
-    WHISKER_FRONT = 25.0
+    WHISKER_FRONT = VEH_RADIUS*1.25
+    WHISKER_SIDES = WHISKER_FRONT
+    WALL_WHISKERS = [WHISKER_FRONT*Point2d(1,0),
+                     WHISKER_SIDES*Point2d(1,1).unit(),
+                     WHISKER_SIDES*Point2d(1,-1).unit()
+                    ]
     base_pos = Point2d(OFFSETX, midy)
     base_dir = Point2d(1.0,0.5).unit()
     init_pos = base_pos - LEAD_OFFSET*base_dir
@@ -69,7 +74,8 @@ if __name__ == "__main__":
     nav = green.navigator
     nav.set_steering('ARRIVE', Point2d(SCREEN_SIZE[0], midy), 1.0)
     nav.pause_steering('ARRIVE')
-    nav.set_steering('WALLAVOID', WHISKER_FRONT, wall_list)
+
+    nav.set_steering('WALLAVOID', WALL_WHISKERS, wall_list)
     nav.pause_steering('WALLAVOID')
     in_lane = False
 
