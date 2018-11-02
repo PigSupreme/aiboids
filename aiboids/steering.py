@@ -28,7 +28,7 @@ from aiboids.point2d import Point2d
 
 # Math Constants (for readability)
 INF = float('inf')
-from math import sqrt
+from math import sqrt, copysign
 SQRT_HALF = sqrt(0.5)
 ZERO_VECTOR = Point2d(0,0)
 
@@ -201,6 +201,55 @@ class Wander(SteeringBehaviour):
         self.offset.scale_to(self.radius)
         # This SEEKs to the final target, using a computational trick
         targetvel = self.distance*self.owner.front + self.offset
+        targetvel.scale_to(self.owner.maxspeed)
+        return targetvel - self.owner.vel
+
+
+class SideSlip(SteeringBehaviour):
+    """Steering force for SIDESLIP behaviour (experimental).
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        forward_dir (Point2d): Intended forward direction of travel.
+        left_slip (float): Horizontal slip distance; left = posistive.
+        max_slope (positive float): Maximum desired slope during slip.
+        start_prop (positive float): Proportion of total progress; see below.
+
+    The vehicle aims towards a given direction (forward_dir) along a line that
+    is parallel to the one through its current position; (left_slip) gives the
+    distance between these lines. Negative values will shift right.
+
+    This is accomplished using a logistic curve satisfying y' = ry(k-y) where y
+    is in the direction orthogonal to forward_dir; this is an S-curve that will
+    be asymptotic to the shifted (final) line of travel. (max_slope) controls
+    the severity of the slip (on the ideal S-curve, it is the slope at the
+    halfway point y=k/2). Because y=0 is a fixed point, we assume that we've
+    started at some positive proportion (start_prop) of the total y range so
+    that the math behaves. However, the horizontal distance from our current
+    position to the final line of travel will still be abs(left_slip); this
+    behaviour makes the necessary adjustments automatically.
+    """
+
+    def __init__(self, owner, forward_dir, left_slip, max_slope, start_prop=0.01):
+        SteeringBehaviour.__init__(self, owner)
+        self.local_xdir = forward_dir.unit()
+        self.local_ydir = forward_dir.left_normal().unit()
+        self.total_slip = abs(left_slip)*(1+start_prop)
+        self.sgn = copysign(1,left_slip)
+        self.origin = owner.pos - self.sgn*(start_prop*self.total_slip)*self.local_ydir
+
+        self.rconst = self.sgn*4*max_slope/(self.total_slip**2)  # Logistic growth constant
+        self.min_y = start_prop*self.total_slip
+
+    def force(self):
+        local_pos = self.owner.pos - self.origin
+        # Compute local y using length of orthogonal projection, but make sure
+        # we're not too small to avoid instability
+        # TODO: Test this to make sure it actually works!
+        local_y = max(self.min_y,self.sgn*local_pos/self.local_ydir)
+
+        local_slope = self.rconst*local_y*(self.total_slip - local_y)
+        targetvel = self.local_xdir + local_slope*self.local_ydir
         targetvel.scale_to(self.owner.maxspeed)
         return targetvel - self.owner.vel
 
