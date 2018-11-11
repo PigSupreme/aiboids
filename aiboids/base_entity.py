@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Module for defining and managing game-type entities.
 
 Use subclasses of BaseEntity for agents that need a unique identifier,
@@ -34,12 +34,9 @@ To send a messages directly, without using a BaseEntity::
 
 The documenation for PostOffice.post_msg() has a complete explanation of usage
 and keyword arguments.
-"""
 
-# for python3 compat
-#from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
+TODO: Docstring examples need tweaking to work under doctest.
+"""
 
 from collections import namedtuple  # For EntityMessage structure
 import sched  # For automatic scheduling of delayed messages
@@ -64,15 +61,10 @@ class BaseEntity(object):
         >>> goat.receive_msg('Hey, goat!')
         Traceback (most recent call last):
         NotImplementedError: THIS_GOAT of <class '__main__.BaseEntity'> has undefined receive_msg().
-
-    Todo:
-        Figure out a useful implemenation for invalid entities that will work
-        with deleting/removing entities from the registry.
     """
 
-    # TODO: Implement this better.
     _INVALID_ID = 'INVALID_ENTITY'
-    _registry = {_INVALID_ID: None}
+    _registry = dict()
 
     def __init__(self, id_string):
         if id_string in BaseEntity._registry:
@@ -94,9 +86,10 @@ class BaseEntity(object):
     def idstr(self):
         """Get the user-supplied ID string of this entity.
 
-        >>> ent = BaseEntity('SOME_PIG')
-        >>> print(ent.idstr)
-        SOME_PIG
+        Example:
+            >>> ent = BaseEntity('SOME_PIG')
+            >>> print(ent.idstr)
+            SOME_PIG
         """
         return self._mySTR
 
@@ -118,6 +111,8 @@ class BaseEntity(object):
         """
         try:
             result = BaseEntity._registry[id_str]
+            if result == BaseEntity._INVALID_ID:
+                return None
         except KeyError:
             result = None
         return result
@@ -129,13 +124,8 @@ class BaseEntity(object):
         Syntax for this is `BaseEntity.update_all()`.
         """
         for entity in BaseEntity._registry.values():
-        #TODO: try..except is needed only for the default entry in _registry
-        #TODO: We possibly need better error-checking
-            try:
+            if entity != BaseEntity._INVALID_ID:
                 entity.update()
-            except AttributeError:
-                if entity is not None:
-                    raise
 
     @staticmethod
     def call_on_all(func, *args, **kwargs):
@@ -144,20 +134,39 @@ class BaseEntity(object):
         >>> entlist = []
         >>> getid  = lambda entity: entlist.append(entity.idstr)
         >>> BaseEntity.call_on_all(getid)
-        >>> entlist.sort()
-        >>> entlist
+        >>> sorted(entlist)
         ['ANY_FISH', 'RED_HERRING', 'THIS_GOAT']
-
-        Note:
-            doctest.testmod() seems to be running tests in alphabetic order,
-            so BaseEnitty.idstr hasn't been tested, and SOME_PIG is missing.
         """
         for entity in BaseEntity._registry.values():
-            try:
+            if entity != BaseEntity._INVALID_ID:
                 func(entity, *args, **kwargs)
-            except AttributeError:
-                if entity is not None:
-                    raise
+
+    @staticmethod
+    def remove(id_str, delete=True):
+        """Remove an entity's from the registry using its ID String.
+
+        Args:
+            id_str (string): The ID string of the entity.
+            delete (boolean): If True (default), the entity with this ID is
+                deleted after unregistering.
+
+        Note:
+            To avoid reference issues, an ID string that gets removed will not
+            be available for later use
+
+        >>> BaseEntity.remove('RED_HERRING')
+        >>> print(BaseEntity.by_id('RED_HERRING'))
+        None
+        >>> BaseEntity('RED_HERRING')
+        Traceback (most recent call last):
+        ValueError: EntityID RED_HERRING has already been used.
+        """
+        entity = BaseEntity.by_id(id_str)
+        if entity:
+            BaseEntity._registry[id_str] = BaseEntity._INVALID_ID
+            if delete:
+                del entity
+
 
     # Note: This function will be picked up by autodocs, but is overridden
     # automatically when a PostOffice() is instantiated.
@@ -326,13 +335,11 @@ def sample_run():
     sch.enterabs(2, 1, this.send_msg, ('THAT_ENT', 'RELATIVE_TIME'), {'delay': 2.2})
     sch.enterabs(2, 1, that.send_msg, ('THIS_ENT', 'ABSOLUTE_TIME'), {'at_time': 3.3})
     sch.enterabs(3, 1, po.post_msg, ('THAT_ENT', 'THIS_ENT', 'VIA_POSTOFFICE'), {'delay': 6})
+    sch.enterabs(4, 1, that.send_msg, ('THIS_ENT', 'WITH EXTRAS'), {'extra': "Hey stuff!"})
 
     # Start the clock and run the schedule
     auto_tick(mc)
     sch.run()
 
-    # TODO: Add an example using extra message information
-
 if __name__ == "__main__":
-    # TODO: Doctests need some tweaking due to order of execution.
     sample_run()
