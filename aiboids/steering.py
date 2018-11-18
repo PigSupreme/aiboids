@@ -261,9 +261,9 @@ class ObstacleAvoid(SteeringBehaviour):
         owner (SimpleVehicle2d): The vehicle computing this force.
         obs_list (list, SimpleObstacle2d): Obstacles to check for avoidance.
 
-    This projects a box in front of the owner and tries to find an obstacle
-    for which collision is imminent (not always the closest obstacle). The
-    owner will attempt to steer around that obstacle.
+    This looks for an obstacle in front of the owner for which collision is
+    most imminent (not always the closest obstacle). If such an obstacle is
+    found, steer around it using a combination of lateral and braking forces.
     """
     constants = {'MIN_LENGTH': STEERING_DEFAULTS['OBSTACLEAVOID_MIN_LENGTH'],
                  'BRAKE_WEIGHT': STEERING_DEFAULTS['OBSTACLEAVOID_BRAKE_WEIGHT']}
@@ -318,6 +318,93 @@ class ObstacleAvoid(SteeringBehaviour):
         else:
             return ZERO_VECTOR
 
+
+class ObstacleSkim(SteeringBehaviour):
+    """SKIM off of a stationary obstacle by steering along a tangent path.
+
+    Args:
+        owner (SimpleVehicle2d): The vehicle computing this force.
+        obs_list (list, SimpleObstacle2d): Obstacles to check for avoidance.
+
+    Uses the same detection method as ObstacleAvoid, but attempts to steer on a
+    course that is tangent to the most imminent obstacle. Still experimental.
+    """
+    # TODO: Figure out what this does and comment in steering_constants.py
+    constants = {'REACT_TIME': STEERING_DEFAULTS['OBSTACLESKIM_REACT_TIME']}
+
+    def __init__(self, owner, obstacle_list, *,
+                 react_time=constants['REACT_TIME']):
+        SteeringBehaviour.__init__(self, owner)
+        self.obstacles = tuple(obstacle_list)
+        self.react_time = react_time
+
+    def force(self):
+        owner = self.owner
+        speed_now = owner.vel.norm()
+        # Obstacles closer than this distance will be avoided
+        front_d = owner.radius + self.react_time*speed_now/owner.maxspeed
+        front_sq = front_d * front_d
+
+        # TODO: This code is duplicated from ObstacleAvoid above.
+        # Find the closest obstacle within the detection box
+        xmin = front_d
+        obs_closest = None
+        for obstacle in self.obstacles:
+            # Consider only obstacles that are nearby
+            target = obstacle.pos
+            diff = target - owner.pos
+            dsq = diff.sqnorm()
+            if dsq < (owner.radius + obstacle.radius)**2:
+                # Currently colliding, steer directly away from obstacle center
+                target_vel = (-owner.maxspeed)*diff
+                return target_vel - owner.vel
+            elif dsq < front_sq:
+                # TODO: Panic if inside obstacle (diff.sqnorm < extended radius)
+                # Convert to local coordinates of the owner
+                local_x = diff / owner.front # This is an Orthogonal projection
+                # Only consider objects in front...
+                if local_x > 0:
+                    # ...that we'd collide with unless we steer
+                    local_y = diff / owner.left
+                    # here
+                    radicand = (owner.radius + obstacle.radius)**2 - local_y**2
+                    if radicand > 0:
+                        # x-coordinate of the closer intersection point
+                        xval = local_x - sqrt(radicand)
+                        # Update if this obstacle is more imminent
+                        if xval < xmin:
+                            xmin, h, k = xval, local_x, local_y
+                            obs_closest = obstacle
+
+        # If there is a closest obstacle, avoid it by steering toward tangent
+        # (h,k) is the center of that obstacle in owner's local coordinates
+        if obs_closest:
+            r = obs_closest.radius + owner.radius
+            # Treat h=r as a special case to avoid a zero denominator
+            if h == r:
+                tangent_m = 2*k*r/(k*k-r*r)
+            else:
+                radpart = r*sqrt(h*h + k*k - r*r)
+                # TODO: If h < r, we may want to follow the other tangent line...
+                # ...which would give more extreme steering when the obstacle...
+                # ...is very close. If so, uncomment the next two lines.
+                #if h < r:
+                #    radpart = -radpart
+                if k >= 0:
+                    tangent_m = (h*k - radpart)/(h*h - r*r)
+                else:
+                    tangent_m = (h*k + radpart)/(h*h - r*r)
+            # Magnitude of desired velocity is scaled based on xmin (distance
+            # to the imminent collison point). If xmin is near the edge of our
+            # detection range, we don't need to reduce speed by much. If xmin
+            # is small, we reduce our speed more drastically.
+            target_speed = speed_now*xmin/front_d
+            target_vel_local = target_speed*Point2d(1,tangent_m).unit()
+            target_vel = (target_vel_local.x)*owner.front + (target_vel_local.y)*owner.left
+            result = target_vel - owner.vel
+            return result
+        else:
+            return ZERO_VECTOR
 
 class TakeCover(SteeringBehaviour):
     """TAKECOVER from another target vehicle behind a nearby obstacle.

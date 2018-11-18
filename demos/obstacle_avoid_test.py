@@ -80,7 +80,7 @@ if __name__ == "__main__":
 
     # Static obstacle
     obs_img = pgrender.obstacle_bumper(OBS_RADIUS)
-    obslist = [SimpleObstacle2d(OBS_POS, OBS_RADIUS, obs_img)]
+    obslist = [SimpleObstacle2d(OBS_POS, Point2d(0,0), OBS_RADIUS, obs_img)]
     rgroup.extend([obs.sprite for obs in obslist])
 
     # Set-up pygame rendering
@@ -132,3 +132,5 @@ if __name__ == "__main__":
         ax.plot(veh.xdata, veh.ydata)
     waypt = pyplot.Circle(OBS_POS.ntuple, OBS_RADIUS+VEH_RADIUS, color='b', fill=False)
     ax.add_artist(waypt)
+    pyplot.show()
+
