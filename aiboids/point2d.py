@@ -79,6 +79,9 @@ class Point2d(object):
     def __str__(self):
         return "Point2d: <%.9f, %.9f>" % self.nt
 
+    def __repr__(self):
+        return "Point2d(%.9f, %.9f)" % self.nt
+
     def __eq__(self, other):
         """Test if two points are equal; overrides the == operator.
 
@@ -142,15 +145,15 @@ class Point2d(object):
         Point2d: <3.000000000, -6.000000000>
         >>> a*3         # Vector*Scalar is undefined in this order
         Traceback (most recent call last):
-        TypeError: Mutiplication of Point2d and <type 'int'> is undefined.
+        TypeError: unsupported operand type(s) for *: 'Point2d' and 'int'
         >>> a *= a      # To avoid later confusion, this raises a TypeError.
         Traceback (most recent call last):
-        TypeError: Compound assignment for dot product is not supported.
+        NotImplementedError: Compound assignment for dot product is not supported.
         """
         try:
             return (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
         except AttributeError:
-            raise TypeError('Mutiplication of Point2d and %s is undefined.' % type(term))
+            return NotImplemented
 
     def __rmul__(self, scalar):
         """Scalar multiplication: scalar*vector; see examples above."""
@@ -160,9 +163,9 @@ class Point2d(object):
         """Compound assignment is not supported for the dot product.
 
         Raises:
-            TypeError
+            NotImplementedError
         """
-        raise TypeError('Compound assignment for dot product is not supported.')
+        raise NotImplementedError('Compound assignment for dot product is not supported.')
 
     def rotated_by(self, angle, use_deg=False):
         """Get this vector rotated anticlockwise.
@@ -244,7 +247,7 @@ class Point2d(object):
 
         Args:
             maxlength (float): Upper limit on the length. If the current length
-            exceeds this, the vector is rescaled in-place.
+              exceeds this, the vector is rescaled in-place.
 
         Returns:
             (bool): True if rescaling was done, False otherwise.
@@ -378,7 +381,7 @@ class Point2d(object):
 
         Note:
             If you want both v2 and v3, use Point2d.resolve(direction) instead.
-            See divison / and compound division =/ above for other options.
+            See divison / and compound division /= above for other options.
 
         >>> a = Point2d(2,4)
         >>> b = Point2d(3,-2)

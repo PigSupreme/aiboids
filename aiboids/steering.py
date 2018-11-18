@@ -1,39 +1,37 @@
-# steering.py
+# aiboids/steering.py
 """Module containing AiBoid steering behavior functions (and Navigator).
 
-Many behaviours use constant values, imported from steering_constants.py and
-assigned to local constants within this module. These are chosen based on the
-the physics defaults (also in steering_constants) to give reasonable results,
-but can be overridden with steering.FOO_CONSTANT = new_value. [check this]
+Many behaviours use constant values, imported from steering_constants.py as the
+STEERING_DEFAULTS dictionary. These are chosen based on the physics defaults
+(also in steering_constants) to give reasonable results.
 
 Todo:
-    Flocking behaviours all assume the flock_list remains constant. If we don't
-    want this, it may be better to have store flock_list on the owner and have
-    it managed externally (perhaps via the owner's Navigator object).
-
-    Another side effect is that each instance of flocking stores its own copy
-    of the flock_list, and this isn't very efficient use of storage.
+    Best way to override STEERING_DEFAULTS? Many of these constants are used as
+    [immutable] default values in the SteeringBehvaiour.__init__() functions,
+    so simply redefining their values won't work. One possible solution is to
+    provide a mechanism for modifying foo.__init__.__defaults__, perhaps in the
+    abstract base class.
 
 Todo:
-    Fix the rest of the module docstring below, once we've finished changes.
+    Document keyword arguments; these are usually for overriding default values
+    from steering.constants.py.
 
+Todo:
+    The __init__() method for each flocking behaviour will automatically set
+    owner.flocking to True; this value is used by Navigator.update() to decide
+    if Navigator.update_neighbors() is called before computing steering force.
+    This was done for convenience, but has some side effects (the most obvious
+    is that update_neighbors() always gets called even if flocking behaviours
+    are paused/removed, and this is a performance issue).
 
+    At the very least, it seems appropriate to move the flocking attribute from
+    the owner vehicle to the Navigator for easier management.
 
-TODO: set/pause/resume/stop behaviour functions always call set_priorities()
-regardless of whether budgeted force is actually used. Since we're currently
-using budgeted force all the time, this issue is pretty much unimportant.
-
-TODO: Updates to self.flocking are handled through set_priorities(), which is
-a sensible thing, since set_priorities() is the function that gets called when
-there is any kind of behaviour change. Make up our minds whether this is truly
-the right approach and change documentation appropriately.
+Todo:
+    See Navigator.update_neighbors() docstring notes for possible updates.
 """
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+import logging
 
 from sys import path
 path.append('..')
@@ -54,10 +52,8 @@ rand_uni = lambda x: rand_gen.uniform(-x, x)
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict
 
-# Dictionary of default constants for steering behaviours
+# Dictionary of imported default constant values
 from aiboids.steering_constants import STEERING_DEFAULTS
-for const_name, const_value in STEERING_DEFAULTS.items():
-    vars()[const_name] = const_value
 
 # Order in which behaviours are considered when using budgeted force:
 from aiboids.steering_constants import PRIORITY_DEFAULTS
@@ -87,7 +83,7 @@ class SteeringBehaviour(object):
 
     @abstractmethod
     def force(self):
-        """Compute the owner's steering force for this behaviour."""
+        # Computes the owner's steering force for this behaviour.
         pass
 
 
@@ -132,8 +128,7 @@ class Flee(SteeringBehaviour):
         if 0 < targetvel.sqnorm() < self.panic_sq:
             targetvel = (owner.maxspeed)*targetvel.unit()
             return targetvel - owner.vel
-        else:
-            return ZERO_VECTOR
+        return ZERO_VECTOR
 
 
 class Arrive(SteeringBehaviour):
@@ -154,17 +149,21 @@ class Arrive(SteeringBehaviour):
         ceratin threshold, based on the owner's mass. Implement this as
         the default value and/or scale based on this threshold.
     """
-    def __init__(self, owner, target, hesitance=ARRIVE_DEFAULT_HESITANCE):
+    constants = {'DEFAULT_HESITANCE': STEERING_DEFAULTS['ARRIVE_DEFAULT_HESITANCE'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
+                 }
+
+    def __init__(self, owner, target, hesitance=constants['DEFAULT_HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.target = target
-        self.hesitance = hesitance
+        self.hesitance = hesitance * Arrive.constants['DECEL_TWEAK']
 
     def force(self):
         owner = self.owner
         target_offset = (self.target - owner.pos)
         dist = target_offset.norm()
         if dist > 0:
-            speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
+            speed = dist / self.hesitance
             if speed > owner.maxspeed:
                 speed = owner.maxspeed
             targetvel = (speed/dist)*target_offset
@@ -188,8 +187,19 @@ class Wander(SteeringBehaviour):
 
     We displace the target point each update by a random vector (whose size is
     limited by *jitter*) and rescale so the target remains on our circle.
+
+    Todo:
+        Give each instance its own random number generator for jitter; this
+        will make testing more reliable.
     """
-    def __init__(self, owner, distance=WANDER_DISTANCE, radius=WANDER_RADIUS, jitter=WANDER_JITTER):
+    constants = {'DEFAULT_DISTANCE' : STEERING_DEFAULTS['WANDER_DISTANCE'],
+                 'DEFAULT_RADIUS' : STEERING_DEFAULTS['WANDER_RADIUS'],
+                 'DEFAULT_JITTER': STEERING_DEFAULTS['WANDER_JITTER']}
+
+    def __init__(self, owner,
+                 distance=constants['DEFAULT_DISTANCE'],
+                 radius=constants['DEFAULT_RADIUS'],
+                 jitter=constants['DEFAULT_JITTER']):
         SteeringBehaviour.__init__(self, owner)
         self.radius = radius
         self.distance = distance
@@ -217,14 +227,21 @@ class ObstacleAvoid(SteeringBehaviour):
     for which collision is imminent (not always the closest obstacle). The
     owner will attempt to steer around that obstacle.
     """
-    def __init__(self, owner, obstacle_list):
+    constants = {'MIN_LENGTH': STEERING_DEFAULTS['OBSTACLEAVOID_MIN_LENGTH'],
+                 'BRAKE_WEIGHT': STEERING_DEFAULTS['OBSTACLEAVOID_BRAKE_WEIGHT']}
+
+    def __init__(self, owner, obstacle_list, *,
+                 min_length=constants['MIN_LENGTH'],
+                 brake_weight=constants['BRAKE_WEIGHT']):
         SteeringBehaviour.__init__(self, owner)
         self.obstacles = tuple(obstacle_list)
+        self.min_length = min_length
+        self.brake_weight = brake_weight
 
     def force(self):
         owner = self.owner
         # Obstacles closer than this distance will be avoided
-        front_d = (1 + owner.vel.norm()/owner.maxspeed)*OBSTACLEAVOID_MIN_LENGTH
+        front_d = (1 + owner.vel.norm()/owner.maxspeed)* self.min_length
         front_sq = front_d * front_d
 
         # Find the closest obstacle within the detection box
@@ -257,7 +274,7 @@ class ObstacleAvoid(SteeringBehaviour):
                 lat_scale = (ly - lr)*(2.0 - lr / front_d)
             else:
                 lat_scale = (ly + lr)*(2.0 - lr / front_d)
-            brake_scale = (lr - lx)*OBSTACLEAVOID_BRAKE_WEIGHT
+            brake_scale = (lr - lx)*self.brake_weight
             result = (brake_scale)*owner.front + (lat_scale)*owner.left
             return result
         else:
@@ -272,67 +289,86 @@ class TakeCover(SteeringBehaviour):
         target (BasePointMass2d): The vehicle we try to hide from.
         obs_list (list of BasePointMass2d): List of obstacles for hiding.
         max_range (float): Hiding points further than this value are ignored.
-        stalk (boolean, optional): If True, only hide when we are in front of the target.
 
-    Owner attempts to find a position that will put an obstacle between itself
-    and some other vehicle. If such a point cannot be found nearby (within
-    max_range of the owner), EVADE the target predator instead.
+    Keyword Args:
+        hesitance (positive float): Hesitance for arriving at the hiding spot.
+        evade_mult (float): Used to compute EVADE panic distance; see below.
+        stalk (boolean): If True, only hide when we're detectable; see below.
+        stalk_dsq(positive float): See stalk description below.
+        stalk_cos(float): See stalk description below.
 
-    If stalk is set to True, the owner will try to hide only when in front of
-    the target and within a certain range. Stalking should be used with other
-    behaviours (e.g., PURSUE) or we get very odd-looking results.
+    Owner attempts to find a spot that puts an obstacle between itself and the
+    target vehicle, then ARRIVEs at that position. If a spot cannot be found
+    nearby (within max_range of the owner), EVADE the target instead, using a
+    panic distance of evade_mult*max_range.
 
-    Todo:
-        Consider moving stalk to a seperate behaviour.
+    If stalk is set to True, the owner takes cover only when close enough to the
+    target and within a maximum angle of the target's front vector. These values
+    are controlled by STALK_DSQ and STALK_COS, respectively.
     """
-    def __init__(self, owner, target, obstacle_list, max_range, stalk=False):
+    constants = {'EVADE_MULT': STEERING_DEFAULTS['TAKECOVER_EVADE_MULT'],
+                 'HESITANCE': STEERING_DEFAULTS['TAKECOVER_ARRIVE_HESITANCE'],
+                 'OBSTACLE_PROXIMITY': STEERING_DEFAULTS['TAKECOVER_OBSTACLE_PROXIMITY'],
+                 'STALK_DSQ': STEERING_DEFAULTS['TAKECOVER_STALK_DSQ'],
+                 'STALK_COS': STEERING_DEFAULTS['TAKECOVER_STALK_COS'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
+
+    def __init__(self, owner, target, obstacle_list, max_range, *,
+                 hesitance=constants['HESITANCE'],
+                 evade_mult=constants['EVADE_MULT'],
+                 stalk=False,
+                 stalk_dsq=constants['STALK_DSQ'],
+                 stalk_cos=constants['STALK_COS']):
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.obstacles = tuple(obstacle_list)
         self.range_sq = max_range**2
+        self.proximity = TakeCover.constants['OBSTACLE_PROXIMITY']*owner.radius
         self.stalk = stalk
-        # Note: This helper instance of EVADE avoids duplicating code here.
-        self.evade_helper = Evade(owner, target, TAKECOVER_EVADE_MULT*max_range)
-        # TODO: ARRIVE needs a fixed target, so it's more trouble than it's
-        # worth to use a helper instance here. If we ever provide an easy way
-        # to switch behaviour targets, it might be worth updating this code and
-        # replace the duplicated ARRIVE code in the force() method.
-        self.hesitance = TAKECOVER_ARRIVE_HESITANCE
+        if stalk:
+            self.stalk_dsq = stalk_dsq
+            self.stalk_cos = stalk_cos
+        # A helper instance of EVADE to avoid duplicating code here.
+        self.evade_helper = Evade(owner, target, evade_mult*max_range)
+        # ARRIVE needs a fixed position as its target; t's not worth using a
+        # seperate instance here. But we still need the effective hesistance.
+        self.hesitance = hesitance * TakeCover.constants['DECEL_TWEAK']
 
     def force(self):
-        # If stalking, exit unless we're close in front of our target.
+        best_pos = None
+        # If stalking and not within the target's detectable area, our desired
+        # position (best_pos) is just behind the target.
         if self.stalk:
             hide_dir = (self.owner.pos - self.target.pos)
-            if hide_dir.sqnorm() < TAKECOVER_STALK_DSQ:
-                if (hide_dir.unit() * self.target.front) < TAKECOVER_STALK_COS:
-                    return ZERO_VECTOR
-        # Otherwise, find the nearest hiding spot.
-        best_dsq = self.range_sq
-        best_pos = None
-        for obs in self.obstacles:
-            # Hiding point for this obstacle, is directly opposite the
-            # vehicle we're hiding from.
-            hide_dir = (obs.pos - self.target.pos).unit()
-            hide_pos = obs.pos + (obs.radius + self.owner.radius)*hide_dir
-            hide_dsq = (hide_pos - self.owner.pos).sqnorm()
-            if hide_dsq < best_dsq:
-                best_pos = hide_pos
-                best_dsq = hide_dsq
-        # If no nearby hiding spot was found, just EVADE the target.
-        if best_pos is None:
+            if hide_dir.sqnorm() > self.stalk_dsq or (hide_dir.unit()*self.target.front) < self.stalk_cos:
+                best_pos = self.target.pos - self.proximity*self.target.front
+
+        # Otherwise, try to find the nearest hiding spot bethind an obstacle.
+        if not best_pos:
+            best_dsq = self.range_sq
+            for obs in self.obstacles:
+                # Find the hiding spot if we use this obstacle; directly
+                # opposite the vehicle we take cover from.
+                hide_dir = (obs.pos - self.target.pos).unit()
+                hide_pos = obs.pos + (obs.radius + self.proximity)*hide_dir
+                hide_dsq = (hide_pos - self.owner.pos).sqnorm()
+                if hide_dsq < best_dsq:
+                    best_pos = hide_pos
+                    best_dsq = hide_dsq
+
+        # If there's no hiding/stalking spot, EVADE the target...
+        if not best_pos:
             return self.evade_helper.force()
-        # Otherwise, ARRIVE at the hiding spot.
-        else:
-            target_offset = (best_pos - self.owner.pos)
-            dist = target_offset.norm()
-            if dist > 0:
-                speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
-                if speed > self.owner.maxspeed:
-                    speed = self.owner.maxspeed
-                targetvel = (speed/dist)*target_offset
-                return targetvel - self.owner.vel
-            else:
-                return ZERO_VECTOR
+
+        # ...otherwise, ARRIVE at the given spot.
+        target_offset = (best_pos - self.owner.pos)
+        dist = target_offset.norm()
+        if dist > 0:
+            speed = min(dist / self.hesitance, self.owner.maxspeed)
+            targetvel = (speed/dist)*target_offset
+            return targetvel - self.owner.vel
+
+        return ZERO_VECTOR
 
 
 class WallAvoid(SteeringBehaviour):
@@ -352,10 +388,12 @@ class WallAvoid(SteeringBehaviour):
     contributes a force in the direction of the wall normal, proportional
     to the penetration depth of the whisker.
     """
-    def __init__(self, owner, front_length, wall_list):
+    constants = {'SIDE_SCALE': STEERING_DEFAULTS['WALLAVOID_SIDE_SCALE']}
+    def __init__(self, owner, front_length, wall_list, *,
+                 side_scale=constants['SIDE_SCALE']):
         SteeringBehaviour.__init__(self, owner)
         self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
-        side_length = front_length * WALLAVOID_SIDE_SCALE
+        side_length = front_length * side_scale
         self.whisker_sizes = (front_length, side_length, side_length)
         self.whisker_num = 3
         self.walls = wall_list
@@ -406,24 +444,25 @@ class WallAvoid(SteeringBehaviour):
 
 
 class Pursue(SteeringBehaviour):
-    """PURSUE a moving object.
+    """PURSUE a moving object; the opposite of EVADE.
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         prey (BasePointMass2d): The object we're pursuing.
-        pcos (float, optional): Cosine of the pounce angle, see notes.
-        pdist (float, optional): Pounce distance, see notes.
+        pcos (float, optional): Cosine of the pounce angle, see below.
+        pdist (float, optional): Pounce distance, see below.
 
-    Notes:
-        If the prey is heading our way (we are within a certain angle of
-        the prey's heading) and within a certain distance, simply "pounce"
-        on the prey by SEEKing to its current position. Otherwise, predict
-        the future position of they prey, based on current velocities,
-        and SEEK to that location.
+    If the prey is heading our way (we are within a certain angle of
+    the prey's heading) and within a certain distance, simply "pounce"
+    on the prey by SEEKing to its current position. Otherwise, predict
+    the future position of they prey, based on current velocities,
+    and SEEK to that location.
     """
-    def __init__(self, owner, prey, pcos=PURSUE_POUNCE_COS, pdist=PURSUE_POUNCE_DISTANCE):
-        SteeringBehaviour.__init__(self, owner)
+    constants = {'POUNCE_COS': STEERING_DEFAULTS['PURSUE_POUNCE_COS'],
+                 'POUNCE_DISTANCE': STEERING_DEFAULTS['PURSUE_POUNCE_DISTANCE']}
 
+    def __init__(self, owner, prey, pcos=constants['POUNCE_COS'], pdist=constants['POUNCE_DISTANCE']):
+        SteeringBehaviour.__init__(self, owner)
         self.prey = prey
         self.pcos = pcos
         self.pdist_sq = pdist**2
@@ -458,11 +497,14 @@ class Follow(SteeringBehaviour):
         offset (Point2d):  Offset from leader. Given in the leader's local
             coordinate frame, with front = +x.
     """
-    def __init__(self, owner, leader, offset, hesitance=FOLLOW_ARRIVE_HESITANCE):
+    constants = {'ARRIVE_HESITANCE': STEERING_DEFAULTS['FOLLOW_ARRIVE_HESITANCE'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
+
+    def __init__(self, owner, leader, offset, hesitance=constants['ARRIVE_HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.leader = leader
         self.offset = offset
-        self.hesitance = hesitance
+        self.hesitance = hesitance * Follow.constants['DECEL_TWEAK']
 
     def force(self):
         owner = self.owner
@@ -477,7 +519,7 @@ class Follow(SteeringBehaviour):
         offset = (target_pos - owner.pos)
         dist = offset.norm()
         if dist > 0:
-            speed = dist / (ARRIVE_DECEL_TWEAK * self.hesitance)
+            speed = dist / self.hesitance
             if speed > owner.maxspeed:
                 speed = owner.maxspeed
             targetvel = (speed/dist)*offset
@@ -487,22 +529,15 @@ class Follow(SteeringBehaviour):
 
 
 class Evade(SteeringBehaviour):
-    """EVADE a moving object.
+    """EVADE a moving object; the opposite of PURSUE.
 
         Args:
             owner (SimpleVehicle2d): The vehicle computing this force.
             predator (BasePointMass2d): The object we're evading.
             panic_dist (float): Ignore the predator beyond this distance.
-
-        Notes:
-            If the prey is heading our way (we are within a certain angle of
-            the prey's heading) and within a certain distance, simply "pounce"
-            on the prey by SEEKing to its current position. Otherwise, predict
-            the future position of they prey, based on current velocities,
-            and SEEK to that location.
     """
-    def __init__(self, owner, predator, panic_dist=EVADE_PANIC_DIST):
-
+    constants = {'PANIC_DIST': STEERING_DEFAULTS['EVADE_PANIC_DIST']}
+    def __init__(self, owner, predator, panic_dist=constants['PANIC_DIST']):
         SteeringBehaviour.__init__(self, owner)
         self.predator = predator
         self.panic_sq = panic_dist**2
@@ -543,12 +578,14 @@ class Guard(SteeringBehaviour):
         formula for computing position is the standard parameterization of
         the line segment from *guard_this* to *guard_from*.
     """
-    def __init__(self, owner, guard_this, guard_from, aggro=0.5):
+    constants = {'HESITANCE': STEERING_DEFAULTS['GUARD_HESITANCE']*STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
+    def __init__(self, owner, guard_this, guard_from, aggro=0.5):
         SteeringBehaviour.__init__(self, owner)
         self.guard_this = guard_this
         self.guard_from = guard_from
         self.aggro = aggro
+        self.hesitance = Guard.constants['HESITANCE']
 
     def force(self):
         # Find the desired position between the two objects right now
@@ -567,7 +604,7 @@ class Guard(SteeringBehaviour):
         offset = (want_pos - owner.pos)
         dist = offset.norm()
         if dist > 0:
-            speed = dist / (ARRIVE_DECEL_TWEAK * GUARD_HESITANCE)
+            speed = dist / self.hesitance
             if speed > owner.maxspeed:
                 speed = owner.maxspeed
             targetvel = (speed/dist)*offset
@@ -587,6 +624,9 @@ class Brake(SteeringBehaviour):
         Haven't sufficiently tested this. Values of decay close to 0 should
         give more gradual braking; close to 1 should be more severe. The
         actual performance may depend on delta_t for time.
+
+    Todo:
+        Once tested, add a BRAKE_DECAY constant to steering.defaults.
     """
     def __init__(self, owner, decay=0.5):
         SteeringBehaviour.__init__(self, owner)
@@ -603,31 +643,46 @@ class WaypointPath(object):
     """Helper class for managing path-related behaviour, using waypoints.
 
     Args:
-        waypoints (list of Point2d): Non-empty list of waypoints on this path.
-        is_cyclic (boolean): If set to True, path will automatically cycle. See notes.
+        waypoints (list of Point2d): At least two waypoints; see below.
+        is_cyclic (boolean): If True, path will automatically cycle, returning
+            to *waypoints[1]* after the last waypoint.
 
-    Notes:
-        Instances of WaypointPath should be owned by a Navigator instance, but
-        all path-management code is controlled from within this class.
+    When used for vehicle steering, an instance of this class should be owned
+    by a vehicle Navigator instance, but all path-management code is controlled
+    from here.
 
-        When using this for vehicle steering, the first waypoint is intended as
-        the starting point of some owner vehicle. The vehicle will *not*
-        automatically return to this point even if is_cyclic is set to True, so
-        add it manually to the end of *waypoints* if a return trip is needed.
+    *waypoints[0]* is intended as the starting point of the owner vehicle, and
+    is ignored when the path is reset or cycled. To include this point in a
+    cyclic path (for example, a patrol route that returns to to start), add the
+    starting point as the last element of *waypoints*.
 
-    Todo:
-        It may be helpful to rewrite this class as a generator.
+    The *waypoints* list is pre-processed so that any point that is close
+    to its predecessor (measured by _EPSILON_SQ) is ignored. If all points
+    are close, we raise a ValueError.
+
+    Raises:
+        ValueError: If *waypoints* has fewer than two entries, or all points
+            are close together (as described above).
     """
+    _EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
+    _RADIUS = STEERING_DEFAULTS['WAYPOINT_RADIUS']
+
     def __init__(self, waypoints, is_cyclic=False):
+        if len(waypoints) < 2:
+            raise ValueError('At least two waypoints needed in a path.')
         self.oldway = waypoints[0]
         self.waypoints = []
+        self.wayradius_sq = WaypointPath._RADIUS**2
         prev_wp = self.oldway
 
         # Include only consecutive waypoints that are far enough apart
         for wp in waypoints[1:]:
-            if (prev_wp - wp).sqnorm() >= PATH_EPSILON_SQ:
+            if (prev_wp - wp).sqnorm() >= WaypointPath._EPSILON_SQ:
                 self.waypoints.append(wp)
                 prev_wp = wp
+        # In the excpetional case that all waypoints are close together...
+        if self.waypoints == []:
+            raise ValueError('Cannot initialize path; waypoints are too close.')
 
         # Compute initial segment, see Notes on returning to first waypoint
         self.newway = self.waypoints[0]
@@ -640,34 +695,48 @@ class WaypointPath(object):
 
         self.is_cyclic = is_cyclic
 
-    def reset_from_position(self, start_pos, do_return=False):
-        """Reset the next waypoint to the start of this path.
+    def restart_from(self, new_start_pos, start_index=0):
+        """Explicitly set the next waypoint and follow the path from there.
 
         Args:
-            start_pos (Point2d): The new starting point for the path
-            do_return (boolean, optional): If set to True, start_pos becomes
-                the final waypoint. See Notes.
+            start_pos (Point2d): Starting location for path following.
+            start_index (positive int): Index of the next waypoint.
 
-        Notes:
-            As with the __init__() method, start_pos is intended as the current
-            location of some vehicle, and is not explicitly added as the first
-            waypoint. If the path was previously cyclic, we will not return to
-            start_pos by default (but the previous waypoints will still continue
-            to cycle). To override this, set do_return=True. However, start_pos
-            will not be added explicitly is it is within the threshold given by
-            PATH_EPSILON_SQ, because it is close enough to an actual waypoint.
+        As with __init__(), start_pos is intended as the current location of
+        some vehicle, and is not explicitly added to the waypoint list.
 
-        Todo:
-            Make sure this works for single edges and start_pos close to the
-            the first or last waypoint in a cyclic path.
+        Note:
+            If start_pos is close (measured by _EPSILON_SQ) to the given
+            waypoint, we ignore that waypoint and start from the next one.
         """
-        self.newway = self.waypoints[0]
-        self.wpindex = 0
-        # If we're close to the first waypoint, use that wp as start_pos
-        if (start_pos - self.newway).sqnorm() < PATH_EPSILON_SQ:
+        self.newway = self.waypoints[start_index]
+        self.wpindex = start_index
+        # If we're close to the first waypoint, ignore it and use start_pos
+        if (new_start_pos - self.newway).sqnorm() < WaypointPath._EPSILON_SQ:
             self.advance()
-        if do_return and (start_pos - self.waypoints[-1]).sqnorm() >= PATH_EPSILON_SQ:
-            self.waypoints.append(start_pos)
+            self.oldway = new_start_pos
+
+    def resume_at_nearest_from(self, from_pos, ignore_visited=True):
+        """Find the closest waypoint and follow the path from there; see notes.
+
+        Args:
+            from_pos (Point2d): The new starting point for the path.
+            ignore_visited (boolean): If True (default), only consider those
+                waypoints not yet visited when finding the closest. Has no
+                effect on cyclic paths.
+        """
+        if ignore_visited:
+            start = self.wpindex
+        else:
+            start = 1
+        self.wpindex = min(range(start, len(self.waypoints)), key=lambda i: (self.waypoints[i]-from_pos).sqnorm())
+        self.newway = self.waypoints[self.wpindex]
+        # If we're within the arrive radius of this waypoint, use the next one
+        if (self.newway - from_pos).sqnorm() < self.wayradius_sq:
+            self.advance()
+        else:
+            self.oldway = self.waypoints[self.wpindex - 1]
+
 
     def advance(self):
         """Update our waypoint to the next one in the path.
@@ -709,8 +778,7 @@ class WaypointPath(object):
         """
         if self.is_cyclic:
             return len(self.waypoints)
-        else:
-            return len(self.waypoints) - self.wpindex
+        return len(self.waypoints) - self.wpindex
 
 
 class WaypathVisit(SteeringBehaviour):
@@ -719,49 +787,42 @@ class WaypathVisit(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         waypath (WaypointPath): The path to be followed.
-        wayradius (float): Waypoint radius; see notes.
+        wayradius (float): Waypoint radius; see below.
 
-    Note:
-        In this version; we merely head towards the next waypoint. If there is
-        only one waypoint left, we ARRIVE at it. Otherwise, we SEEK. A waypoint
-        is visited once the distance to owner is less than *wayradius*.
+    A waypoint is visited once the distance to owner is less than *wayradius*.
+    In this version; we steer directly at the next waypoint, even if we are
+    knocked off-course. See WayPathResume for an alternative.
 
-    Todo:
-        This is less of a behaviour and more of a manager for other behaviours;
-        consider moving its functionality to within the Navigator class.
+    For the final waypoint, we ARRIVE at it and stay there as long as this
+    behaviour remains active. For previous waypoints, we use SEEK.
     """
-    def __init__(self, owner, waypath, wayradius=WAYPOINT_RADIUS):
+    def __init__(self, owner, waypath, wayradius=WaypointPath._RADIUS):
         SteeringBehaviour.__init__(self, owner)
-        # TODO: If waypath has no waypoints left, ARRIVE won't work?
         self.waypath = waypath
         self.wprad_sq = wayradius**2
-        if waypath.num_left() <= 1:
-            self.wayforce = Arrive(owner, waypath.newway)
+        self.nextwaypt = waypath.newway
+        if self.nextwaypt is None:
+            raise ValueError('No more waypoints to visit.')
+        if waypath.num_left() > 1:
+            self.wayforce = Seek(owner, self.nextwaypt)
         else:
-            self.wayforce = Seek(owner, waypath.newway)
+            self.wayforce = Arrive(owner, self.nextwaypt)
+
 
     def force(self):
-        # If no waypoints remain in the path, exit and return zero force.
-        if self.waypath.newway is None:
-            return ZERO_VECTOR
-        # Otherwise, check if we're within distance the next waypoint.
-        # Note: No force is returned if we switch to the next waypoint.
-        if (self.owner.pos - self.waypath.newway).sqnorm() <= self.wprad_sq:
+        # If there's a current destination, check if we're within range of it
+        if self.nextwaypt and (self.owner.pos - self.nextwaypt).sqnorm() <= self.wprad_sq:
             self.waypath.advance()
-            nextwaypt = self.waypath.newway
+            self.nextwaypt = self.waypath.newway
             # If this was the last waypoint in the path, we should already be
             # using ARRIVE, and don't need to change anything. Otherwise we
             # update the steering behaviour to the new waypoint.
-            if nextwaypt is not None:
-                # TODO: Next line used only by the demo for testing??
-                self.owner.waypoint = nextwaypt
+            if self.nextwaypt is not None:
                 del self.wayforce
-                if self.waypath.num_left() <= 1:
-                    self.wayforce = Arrive(self.owner, nextwaypt)
+                if self.waypath.num_left() == 1:
+                    self.wayforce = Arrive(self.owner, self.nextwaypt)
                 else:
-                    self.wayforce = Seek(self.owner, nextwaypt)
-            return ZERO_VECTOR
-        # Otherwise, we're still in progress to the current waypoint.
+                    self.wayforce = Seek(self.owner, self.nextwaypt)
         return self.wayforce.force()
 
 
@@ -771,32 +832,32 @@ class WaypathResume(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         waypath (WaypointPath): The path to be followed.
-        expk (positive float): Exponential decay constant; see notes.
-        wayradius (float): Waypoint radius; see notes.
+        expk (positive float): Exponential decay constant; see below.
+        wayradius (float): Waypoint radius; see below.
 
-    Note:
-        If the vehicle is knocked off-course, this will give a balance between
-        returning directly to the current path edge and progressing towards the
-        next waypoint; this is controlled by *expk*; larger values give a more
-        immediate return to the path.
+    If the vehicle is knocked off-course, this will give a balance between
+    returning directly to the current path edge and progressing towards the next
+    waypoint; this is controlled by *expk*. Larger values give a more immediate
+    return to the path.
 
+    Notes:
         If the vehicle has already overshot the next waypoint, we head directly
         to that waypoint, ignoring the path. Otherwise, follow an exponential
         decay curve asymptotic to the path; although this curve doesn't truly
         pass through the waypoint, it makes computations very quick, especially
-        since we store invk. As above, a waypoint is visited once the distance
-        to owner is less than *wayradius*, so we don't need to hit the waypoint
-        exactly.
-
-    Todo:
-        This is less of a behaviour and more of a manager for other behaviours;
-        consider moving its functionality to within the Navigator class.
+        since we store *invk*. Since, a waypoint is visited once the we're
+        withint *wayradius*, we don't need to hit the waypoint exactly.
     """
-    def __init__(self, owner, waypath, expk=PATHRESUME_DECAY, wayradius=WAYPOINT_RADIUS):
+    constants = {'EXP_DECAY': STEERING_DEFAULTS['PATHRESUME_EXP_DECAY'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
+
+    def __init__(self, owner, waypath, expk=constants['EXP_DECAY'],
+                 wayradius=WaypointPath._RADIUS):
         SteeringBehaviour.__init__(self, owner)
         self.waypath = waypath
         self.invk = 1.0/expk
         self.wprad_sq = wayradius**2
+        self.hesitance = WaypathResume.constants['DECEL_TWEAK']
 
     def force(self):
         owner = self.owner
@@ -818,7 +879,7 @@ class WaypathResume(SteeringBehaviour):
                 target_offset = (nextwaypt - owner.pos)
                 dist = target_offset.norm()
                 if dist > 0:
-                    speed = min(dist / ARRIVE_DECEL_TWEAK, owner.maxspeed)
+                    speed = min(dist / self.hesitance, owner.maxspeed)
                     targetvel = (speed/dist)*target_offset
                     return targetvel - owner.vel
                 else:
@@ -839,10 +900,9 @@ class WaypathResume(SteeringBehaviour):
             self.waypath.advance()
             return ZERO_VECTOR
         # Otherwise, SEEK to whatever target was computed above
-        else:
-            targetvel = (target - owner.pos)
-            targetvel.scale_to(owner.maxspeed)
-            return targetvel - owner.vel
+        targetvel = (target - owner.pos)
+        targetvel.scale_to(owner.maxspeed)
+        return targetvel - owner.vel
 
 
 class FlowFollow(SteeringBehaviour):
@@ -854,7 +914,7 @@ class FlowFollow(SteeringBehaviour):
             will attempt to follow this.
         dt (positive float): Time between steering updates.
 
-    Todo:
+    Warning:
         Still experimental. We should probably allow for a variable time step.
     """
     def __init__(self, owner, vel_field, dt=1.0):
@@ -873,10 +933,8 @@ class FlowFollow(SteeringBehaviour):
 ##############################################
 ### Group (flocking) behaviours start here ###
 ##############################################
-# TODO: When initiating flocking, check that owner has a flockmates attribute.
-
 class FlockSeparate(SteeringBehaviour):
-    """Steering force for SEPARATE group behaviour (flocking).
+    """SEPARATE from our neighbors to avoid collisions (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
@@ -887,29 +945,28 @@ class FlockSeparate(SteeringBehaviour):
         distance. This gave nicer results and allows us to cleverly avoid
         computing a sqrt.
     """
-    def __init__(self, owner):
+    constants = {'FORCE_SCALE': STEERING_DEFAULTS['FLOCKING_SEPARATE_SCALE']}
+
+    def __init__(self, owner, scale=constants['FORCE_SCALE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
         owner.flocking = True
+        self.scale = scale
 
     def force(self):
         result = Point2d(0,0)
         for other in self.owner.neighbor_list:
             if other is not self.owner:
                 offset = self.owner.pos - other.pos
-                result += (FLOCKING_SEPARATE_SCALE*other.radius/offset.sqnorm())*offset
+                result += (self.scale*other.radius/offset.sqnorm())*offset
         return result
 
 
 class FlockAlign(SteeringBehaviour):
-    """Steering force for ALIGN group behaviour (flocking).
+    """ALIGN with our neighbors by matching their average velocity (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
-
-    Notes:
-        Unlike(?) traditional boids, we ALIGN with the average of neighbors'
-        velocity vectors. Align with heading (normalize velocity) looked weird.
     """
     def __init__(self, owner):
         SteeringBehaviour.__init__(self, owner)
@@ -925,21 +982,23 @@ class FlockAlign(SteeringBehaviour):
                 n += 1
         if n > 0:
             return (1.0/n)*result - self.owner.front
-        else:
-            return ZERO_VECTOR
+        return ZERO_VECTOR
 
 
 class FlockCohesion(SteeringBehaviour):
-    """Steering force for COHESION group behaviour.
+    """COHESION with our neighbors towards their average position (flocking).
 
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
     """
+    constants = {'HESITANCE': STEERING_DEFAULTS['FLOCKING_COHESION_HESITANCE'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
-    def __init__(self, owner):
+    def __init__(self, owner, hesitance=constants['HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
         owner.flocking = True
+        self.hesitance = hesitance*FlockCohesion.constants['DECEL_TWEAK']
 
     def force(self):
         center = Point2d(0,0)
@@ -953,7 +1012,7 @@ class FlockCohesion(SteeringBehaviour):
             target_offset = ((1.0/n)*center - self.owner.pos)
             dist = target_offset.norm()
             if dist > 0:
-                speed = dist / (ARRIVE_DECEL_TWEAK * FLOCKING_COHESION_HESITANCE)
+                speed = dist / self.hesitance
                 if speed > self.owner.maxspeed:
                     speed = self.owner.maxspeed
                 targetvel = (speed/dist)*target_offset
@@ -970,9 +1029,10 @@ class Navigator(object):
 
     Args:
         vehicle (SimpleVehicle2d): The vehicle to be steered.
-        use_budget (boolean): If True (default), use prioritized budgeted force.
+        use_budget (boolean): If True (default), use prioritized budgeted force,
+            with budget set to vehicle.maxforce
     """
-
+    _FLOCK_SCALE = STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']
     # Dictionary of defined behaviours for later use
     _steering = {beh.__name__.upper(): beh for beh in SteeringBehaviour.__subclasses__()}
 
@@ -984,27 +1044,28 @@ class Navigator(object):
         if use_budget:
             self.force_update = Navigator.compute_force_budgeted
             self.sorted_behaviours = None
+            self.force_budget = vehicle.maxforce
         else:
             self.force_update = Navigator.compute_force_simple
         vehicle.navigator = self
         vehicle.flocking = False
-        # TODO: Give vehicle convenient access to navigator interface,
-        #       such as vehicle.set_steering = self.set_steering(...)
 
-    def set_steering(self, behaviour, *args):
+    def set_steering(self, behaviour, *args, **kwargs):
         """Add a new steering behaviour or change existing targets.
 
         Args:
             behaviour(string): Name of the behaviour to be added/modified.
-            args: Additional arguments for that behaviour.
+
+        Additional positional and keyword arguments are passed as-is to the
+        __init__() method of the given behaviour.
         """
         # First make sure that the behaviour is defined.
         try:
             steer_class = Navigator._steering[behaviour]
         except KeyError:
-            print('**WARNING** Behaviour %s is not available.' % behaviour)
+            logging.warning('set_steering: %s is not available.' % behaviour)
             return False
-        newsteer = steer_class(self.vehicle, *args)
+        newsteer = steer_class(self.vehicle, *args, **kwargs)
         # If this behaviour isn't already in use, mark for later sorting.
         if behaviour not in self.active_behaviours:
             # If we're using budgeted force, this ensures the extended list of
@@ -1024,7 +1085,7 @@ class Navigator(object):
         try:
             beh = self.active_behaviours.pop(behaviour)
         except KeyError:
-            print('**WARNING** Behaviour %s is not active; ignoring pause.' % behaviour)
+            logging.info('Behaviour %s is not active; ignoring pause.' % behaviour)
             return False
         self.paused_behaviours[behaviour] = beh
         return True
@@ -1038,7 +1099,7 @@ class Navigator(object):
         try:
             beh = self.paused_behaviours.pop(behaviour)
         except KeyError:
-            print('**WARNING** Behaviour %s is not paused; ignoring resume.' % behaviour)
+            logging.info('Behaviour %s is not paused; ignoring resume.' % behaviour)
             return False
         self.active_behaviours[behaviour] = beh
         if self.force_update == Navigator.compute_force_budgeted:
@@ -1046,40 +1107,32 @@ class Navigator(object):
         return True
 
     def update(self, delta_t=1.0):
-        """Update neighbors if needed; compute/apply steering force and move.
+        """Update neighbors (if needed) and set our new steering force.
 
         Args:
-            delta_t (float, pptional): Time since last update; currently unused.
-
-        Todo:
-            It may be desirable to seperate flocking/nagivation/move updates
-            into their own functions, since not all of these may occur at the
-            same rate (possibly for performance reasons, for example).
+            delta_t (float, optional): Time since last update; currently unused.
         """
         if self.vehicle.flocking:
             self.update_neighbors(self.vehicle.flockmates)
         self.force_update(self)
 
     def compute_force_simple(self):
-        """Updates the current steering force using all active behaviors.
+        """Compute/update steering force using all active behaviors.
 
         Note:
-            Since the vehicle classes are expected to limit the maximum force
+            Since the BasePoint classes are expected to limit the maximum force
             applied, this function no longer does so.
         """
         self.steering_force.zero()
         # Iterate over active behaviours and accumulate force from each
         for behaviour in self.active_behaviours.values():
             self.steering_force += behaviour.force()
+        return self.steering_force
 
     def compute_force_budgeted(self):
-        """Find prioritized steering force within the vehicle's budget.
-
-        Todo:
-            Vehicle's maxforce is used as the budget. Allow other values?
-        """
+        """Compute/update prioritized steering force within a given budget."""
         self.steering_force.zero()
-        budget = self.vehicle.maxforce
+        budget = self.force_budget
         for behaviour in self.active_behaviours.values():
             newforce = behaviour.force()
             newnorm = newforce.norm()
@@ -1110,17 +1163,19 @@ class Navigator(object):
         self.force_update = Navigator.compute_force_budgeted
         self.force_update(self)
 
-    def update_neighbors(self, vehlist=[]):
+    def update_neighbors(self, vehlist, radius_scale=_FLOCK_SCALE):
         """Populates a list of nearby vehicles, for use with flocking.
 
         Args:
             vehlist (List of BasePointMass2d): Objects to check; see notes.
+            radius_scale (positive float): Check for neighbors within the
+                owner's radius times this value.
 
         Notes:
             This function checks object based on their distance to owner and
             includes only those in front of the owner. Maximum distance is the
-            owner's radius times FLOCKING_RADIUS_MULTIPLIER. We may consider
-            more sophisticated sensing of neighbors in the future.
+            owner's radius times radius_scale. We may use more sophisticated
+            sensing of neighbors in the future.
 
             Any pre-processing (spatial partitioning, sensory perception, or
             flocking with certain vehicles only) should be done before calling
@@ -1129,12 +1184,9 @@ class Navigator(object):
             Results are stored as owner.neighbor_list to be read later by any
             steering force() functions (mostly flocking) that require neighbor
             information. Run this function before each steering update.
-
-        Todo:
-            See Notes above for possible updates to this function.
         """
         owner = self.vehicle
-        n_radius = owner.radius * FLOCKING_RADIUS_MULTIPLIER
+        n_radius = owner.radius * radius_scale
         owner.neighbor_list = list()
         for other in vehlist:
             if other is not owner:
@@ -1147,8 +1199,5 @@ class Navigator(object):
 
 if __name__ == "__main__":
     print("\nValues of imported steering constants are:")
-    for cname in sorted(STEERING_DEFAULTS.keys()):
-        try:
-            print('%s : %.4f' % (cname, vars()[cname]))
-        except KeyError:
-            print('%s not defined!' % cname)
+    for cname, cval in sorted(STEERING_DEFAULTS.items()):
+        print('%s : %.4f' % (cname, cval))

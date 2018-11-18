@@ -7,11 +7,14 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
-import sys, pygame
-from pygame.locals import QUIT, MOUSEBUTTONDOWN
+import sys
 from random import randint
 
+import pygame
+from pygame.locals import QUIT, MOUSEBUTTONDOWN
+
 # Note: Adjust this depending on where this file ends up.
+# We assume this file lives in aiboids/demos
 sys.path.append('..')
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d
@@ -21,42 +24,48 @@ INF = float('inf')
 
 if __name__ == "__main__":
     # Display set-up
-    SCREEN_SIZE = (800,640)
-    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'FLOCKING/EVADE steering demo.')
-    UPDATE_SPEED = 0.15
+    SCREEN_SIZE = (1024, 768)
+    SCREEN, BGCOLOR = pgrender.setup(SCREEN_SIZE, 'FLOCKING/EVADE steering demo.')
+    UPDATE_SPEED = 0.5
     BORDER = 30
 
-    # Used to generate random positions and velocities for vehicles
+    # Used to generate random positions for vehicles
     randpoint = lambda: Point2d(randint(BORDER, SCREEN_SIZE[0]-BORDER), randint(BORDER, SCREEN_SIZE[1]-BORDER))
 
-    # Number of vehicles and obstacles
-    numsheep = 16
-    numveh = numsheep + 1   # Extra is the dog
-    numobs = 10
+    # Vehicles (sheep/dog) and obstacle information
+    NUMSHEEP = 29
+    SHEEP_RADIUS = 20
+    DOG_RADIUS = 20
+    NUMVEHICLES = NUMSHEEP + 1
+    NUMOBSTACLES = 12
 
-    # Load images
+    # Amount of time spent flocking
+    TIME_PERIOD = 1000
+
+    # Create sprite images
     images = dict()
-    images['green'] = pgrender.boid_chevron(20, (0,222,0), (0,0,0))
-    images['yellow'] = pgrender.boid_chevron(20, (222,222,0), (0,0,0))
-
-    # Randomly generate initial placement for vehicles
-    init_pos = [randpoint() for i in range(numveh)]
-    init_vel = [(BORDER*UPDATE_SPEED/10)*randpoint().unit() for i in range(numveh)]
+    images['green'] = pgrender.boid_chevron(SHEEP_RADIUS, (0, 222, 0), (0, 0, 0))
+    images['yellow'] = pgrender.boid_chevron(DOG_RADIUS, (222, 222, 0), (0, 0, 0))
+    
+    # (radius, mass, maxspeed, maxforce, spritedata)
+    SHEEP_DATA = (SHEEP_RADIUS, 1.0, 8.0, 6.0, images['green'])
+    DOG_DATA = (DOG_RADIUS, 1.0, 10.0, 6.0, images['yellow'])
 
     # Flock of sheep and associated pygame sprites
     sheep_list = []
-    for i in range(numsheep):
-        sheep = SimpleVehicle2d(init_pos[i], 20, init_vel[i], images['green'])
+    for i in range(NUMSHEEP):
+        sheep = SimpleVehicle2d(randpoint(), Point2d(0,0), *SHEEP_DATA)
         sheep_list.append(sheep)
-    # ...and your little dog, too!
-    dog = SimpleVehicle2d(init_pos[numsheep], 20, init_vel[numsheep], images['yellow'])
+
+    #...and your little dog, too!
+    dog = SimpleVehicle2d(randpoint(), Point2d(0,0), *DOG_DATA)
 
     # List of vehicles and sprites for later use
     vehicles = sheep_list + [dog]
     rgroup = [veh.sprite for veh in vehicles]
 
     # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
+    obslist, obs_sprites = pgrender.scattered_obstacles(NUMOBSTACLES, 15, SCREEN_SIZE)
     rgroup.extend(obs_sprites)
 
     # Static Walls for pygame (near screen boundary only)
@@ -70,24 +79,23 @@ if __name__ == "__main__":
 # Navigator set-up starts here
 ##############################
 
-    # This demo fails to celebrate its sheep diversity
-    # Flock with other sheep and evade the dog
+    # This demo still fails to celebrate its sheep diversity
+    # Flock with other sheep, evade the dog, wander around
     for sheep in sheep_list:
         sheep.flockmates = sheep_list
         sheep.navigator.set_steering('FLOCKSEPARATE')
         sheep.navigator.set_steering('FLOCKALIGN')
         sheep.navigator.set_steering('FLOCKCOHESION')
         sheep.navigator.set_steering('EVADE', dog, 180)
-        sheep.navigator.set_steering('WANDER', 250, 20, 10)
+        sheep.navigator.set_steering('WANDER', 200, 25, 6)
 
-    # No rule says a dog can't override default physics!
-    dog.maxspeed, dog.radius = 10.0, 50
+    # Using flocking on the dog gives convincing chase behaviour
     dog.flockmates = sheep_list
     dog.navigator.set_steering('FLOCKSEPARATE')
     dog.navigator.set_steering('FLOCKALIGN')
-    dog.navigator.set_steering('WANDER', 200, 25, 6)
+    dog.navigator.set_steering('WANDER', 200, 25, 18)
 
-    # All vehicles avoid obstacles and walls
+    # All creatures avoid obstacles and walls
     for veh in vehicles:
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
         veh.navigator.set_steering('WALLAVOID', 25.0, wall_list)
@@ -95,7 +103,24 @@ if __name__ == "__main__":
 ##############################
 # Main loop
 ##############################
+    ticks = 0
+    align_on = True
     while 1:
+        ticks = ticks + 1
+
+        if ticks > TIME_PERIOD:
+            ticks = 0
+            if align_on:
+                align_on = False
+                for sheep in sheep_list:
+                    sheep.navigator.pause_steering('FLOCKALIGN')
+                    sheep.navigator.pause_steering('FLOCKCOHESION')
+            else:
+                align_on = True
+                for sheep in sheep_list:
+                    sheep.navigator.resume_steering('FLOCKALIGN')
+                    sheep.navigator.resume_steering('FLOCKCOHESION')
+
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
                 pygame.quit()
@@ -109,6 +134,14 @@ if __name__ == "__main__":
         allsprites.update(UPDATE_SPEED)
 
         # Screen update
-        screen.fill(bgcolor)
-        allsprites.draw(screen)
+        SCREEN.fill(BGCOLOR)
+
+        # Show neighbor links if flocking is currently active
+        if align_on:
+            for sheep in sheep_list:
+                for other in sheep.neighbor_list:
+                    if other is not sheep:
+                        pygame.draw.line(SCREEN, (0, 128, 0), sheep.pos.ntuple, other.pos.ntuple)
+
+        allsprites.draw(SCREEN)
         pygame.display.flip()

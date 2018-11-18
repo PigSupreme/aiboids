@@ -25,7 +25,7 @@ from aiboids import pgrender
 if __name__ == "__main__":
     # Display set-up
     SCREEN_SIZE = (800,640)
-    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'FLOCKING/EVADE steering demo.')
+    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'Waypoints steering demo.')
     UPDATE_SPEED = 1.0
     BORDER = 30
 
@@ -51,8 +51,8 @@ if __name__ == "__main__":
     init_vel = Point2d(1.0,0)
 
     # Array of vehicles and associated pygame sprites
-    green = SimpleVehicle2d(init_pos[0], 20, init_vel, images['green'])
-    yellow = SimpleVehicle2d(init_pos[1], 20, init_vel, images['yellow'])
+    green = SimpleVehicle2d(init_pos[0], init_vel, 20, 1.0, 8.0, 6.0, images['green'])
+    yellow = SimpleVehicle2d(init_pos[1], init_vel, 20, 1.0, 8.0, 6.0, images['yellow'])
     vehicles = [green, yellow]
     rgroup = [veh.sprite for veh in vehicles]
 
@@ -84,14 +84,14 @@ if __name__ == "__main__":
     # Green (WAYPATHTRAVERSE)
     glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
-    green.navigator.set_steering('WAYPATHRESUME', gpath)
-    green.waypoint = green.pos
+    gpath.resume_at_nearest_from(green.pos)
+    green.navigator.set_steering('WAYPATHVISIT', gpath)
 
-    # Yellow (WAYPATHVISIT)
+    # Yellow (WAYPATHVISIT with cyclic path)
     ylist = waylist[::-1] + waylist[-1:]
     ypath = WaypointPath([Point2d(*p) for p in ylist], True)
-    yellow.navigator.set_steering('WAYPATHVISIT', ypath)
-    yellow.waypoint = yellow.pos
+    ypath.resume_at_nearest_from(yellow.pos)
+    yellow.navigator.set_steering('WAYPATHRESUME', ypath)
 
     ### Main loop ###
     while 1:
