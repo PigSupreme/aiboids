@@ -6,13 +6,6 @@ STEERING_DEFAULTS dictionary. These are chosen based on the physics defaults
 (also in steering_constants) to give reasonable results.
 
 Todo:
-    Best way to override STEERING_DEFAULTS? Many of these constants are used as
-    [immutable] default values in the SteeringBehvaiour.__init__() functions,
-    so simply redefining their values won't work. One possible solution is to
-    provide a mechanism for modifying foo.__init__.__defaults__, perhaps in the
-    abstract base class.
-
-Todo:
     Document keyword arguments; these are usually for overriding default values
     from steering.constants.py.
 
@@ -75,6 +68,11 @@ class SteeringBehaviour(object):
         # Computes the owner's steering force for this behaviour.
         pass
 
+    @classmethod
+    def default_constants(cls):
+        if hasattr(cls, 'constants'):
+            return cls.constants
+        return dict()
 
 class Seek(SteeringBehaviour):
     """SEEK towards a fixed point at maximum speed.
@@ -142,10 +140,11 @@ class Arrive(SteeringBehaviour):
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']
                 }
 
-    def __init__(self, owner, target, hesitance=constants['DEFAULT_HESITANCE']):
+    def __init__(self, owner, target, hesitance=constants['DEFAULT_HESITANCE'], *,
+                 decel_tweak=constants['DECEL_TWEAK']):
         SteeringBehaviour.__init__(self, owner)
         self.target = target
-        self.hesitance = hesitance * Arrive.constants['DECEL_TWEAK']
+        self.hesitance = hesitance*Arrive.constants['DECEL_TWEAK']
 
     def force(self):
         owner = self.owner
@@ -235,7 +234,7 @@ class SideSlip(SteeringBehaviour):
         self.local_xdir = forward_dir.unit()
         self.local_ydir = forward_dir.left_normal().unit()
         self.total_slip = abs(left_slip)*(1+start_prop)
-        self.sgn = copysign(1,left_slip)
+        self.sgn = copysign(1, left_slip)
         self.origin = owner.pos - self.sgn*(start_prop*self.total_slip)*self.local_ydir
 
         self.rconst = self.sgn*4*max_slope/(self.total_slip**2)  # Logistic growth constant
@@ -246,7 +245,7 @@ class SideSlip(SteeringBehaviour):
         # Compute local y using length of orthogonal projection, but make sure
         # we're not too small to avoid instability
         # TODO: Test this to make sure it actually works!
-        local_y = max(self.min_y,self.sgn*local_pos/self.local_ydir)
+        local_y = max(self.min_y, self.sgn*local_pos/self.local_ydir)
 
         local_slope = self.rconst*local_y*(self.total_slip - local_y)
         targetvel = self.local_xdir + local_slope*self.local_ydir
@@ -330,7 +329,7 @@ class ObstacleSkim(SteeringBehaviour):
     course that is tangent to the most imminent obstacle. Still experimental.
     """
     # TODO: Figure out what this does and comment in steering_constants.py
-    constants = {'REACT_TIME': STEERING_DEFAULTS['OBSTACLESKIM_REACT_TIME']}
+    constants = {'REACT_TIME': STEERING_DEFAULTS['OBSTACLE_REACT_TIME']}
 
     def __init__(self, owner, obstacle_list, *,
                  react_time=constants['REACT_TIME']):
@@ -443,21 +442,22 @@ class TakeCover(SteeringBehaviour):
                  evade_mult=constants['EVADE_MULT'],
                  stalk=False,
                  stalk_dsq=constants['STALK_DSQ'],
-                 stalk_cos=constants['STALK_COS']):
+                 stalk_cos=constants['STALK_COS'],
+                 stalk_prox=constants['OBSTACLE_PROXIMITY']):
         SteeringBehaviour.__init__(self, owner)
         self.target = target
         self.obstacles = tuple(obstacle_list)
         self.range_sq = max_range**2
-        self.proximity = TakeCover.constants['OBSTACLE_PROXIMITY']*owner.radius
+        self.proximity = stalk_prox*owner.radius
         self.stalk = stalk
         if stalk:
             self.stalk_dsq = stalk_dsq
             self.stalk_cos = stalk_cos
         # A helper instance of EVADE to avoid duplicating code here.
         self.evade_helper = Evade(owner, target, evade_mult*max_range)
-        # ARRIVE needs a fixed position as its target; t's not worth using a
+        # ARRIVE needs a fixed position as its target; it's not worth using a
         # seperate instance here. But we still need the effective hesistance.
-        self.hesitance = hesitance * TakeCover.constants['DECEL_TWEAK']
+        self.hesitance = hesitance.TakeCoverConstants['DECEL_TWEAK']
 
     def force(self):
         best_pos = None
@@ -511,8 +511,6 @@ class WallAvoid(SteeringBehaviour):
     """
     def __init__(self, owner, whisker_list, wall_list=None):
         SteeringBehaviour.__init__(self, owner)
-        #self.whisker_coords = ((1,0), (SQRT_HALF,SQRT_HALF), (SQRT_HALF,-SQRT_HALF))
-        #side_length = front_length * side_scale
         self.whisker_num = len(whisker_list)
         self.whisker_sizes = [w.norm() for w in whisker_list]
         self.whisker_dirs = [w.unit() for w in whisker_list]
@@ -614,17 +612,22 @@ class Follow(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         leader (BasePointMass2d): The object to be followed.
-        offset (Point2d):  Offset from leader. Given in the leader's local
-            coordinate frame, with front = +x.
+        offset (Point2d):  Offset vector from leader; see below.
+        hesitance (positive float, optional: Hesistance for ARRIVE; see below.
+
+    This vehicle will attempt to predict the future position of its leader, and
+    uses ARRIVE-style behaviour to steer towards a given offset (given in the
+    leader's local coordinate space).
     """
     constants = {'ARRIVE_HESITANCE': STEERING_DEFAULTS['FOLLOW_ARRIVE_HESITANCE'],
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
-    def __init__(self, owner, leader, offset, hesitance=constants['ARRIVE_HESITANCE']):
+    def __init__(self, owner, leader, offset,
+                 hesitance=constants['ARRIVE_HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.leader = leader
         self.offset = offset
-        self.hesitance = hesitance * Follow.constants['DECEL_TWEAK']
+        self.hesitance = hesitance*Follow.constants['DECEL_TWEAK']
 
     def force(self):
         owner = self.owner
@@ -698,14 +701,16 @@ class Guard(SteeringBehaviour):
         formula for computing position is the standard parameterization of
         the line segment from *guard_this* to *guard_from*.
     """
-    constants = {'HESITANCE': STEERING_DEFAULTS['GUARD_HESITANCE']*STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
+    constants = {'HESITANCE': STEERING_DEFAULTS['GUARD_HESITANCE'],
+                 'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
-    def __init__(self, owner, guard_this, guard_from, aggro=0.5):
+    def __init__(self, owner, guard_this, guard_from, aggro=0.5, *,
+                 hesitance=constants['HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.guard_this = guard_this
         self.guard_from = guard_from
         self.aggro = aggro
-        self.hesitance = Guard.constants['HESITANCE']
+        self.hesitance = hesitance*Guard.constants['DECEL_TWEAK']
 
     def force(self):
         # Find the desired position between the two objects right now
@@ -786,18 +791,23 @@ class WaypointPath(object):
     """
     _EPSILON_SQ = STEERING_DEFAULTS['PATH_EPSILON_SQ']
     _RADIUS = STEERING_DEFAULTS['WAYPOINT_RADIUS']
+    constants = {'EPSILON_SQ': STEERING_DEFAULTS['PATH_EPSILON_SQ'],
+                 'WAYPT_RADIUS': STEERING_DEFAULTS['WAYPOINT_RADIUS']}
 
-    def __init__(self, waypoints, is_cyclic=False):
+    def __init__(self, waypoints, is_cyclic=False, *,
+                 epsilon_sq=constants['EPSILON_SQ'],
+                 waypt_radius=constants['WAYPT_RADIUS']):
         if len(waypoints) < 2:
             raise ValueError('At least two waypoints needed in a path.')
         self.oldway = waypoints[0]
         self.waypoints = []
-        self.wayradius_sq = WaypointPath._RADIUS**2
+        self.epsilon_sq = epsilon_sq
+        self.wayradius_sq = waypt_radius**2
         prev_wp = self.oldway
 
         # Include only consecutive waypoints that are far enough apart
         for wp in waypoints[1:]:
-            if (prev_wp - wp).sqnorm() >= WaypointPath._EPSILON_SQ:
+            if (prev_wp - wp).sqnorm() >= self.epsilon_sq:
                 self.waypoints.append(wp)
                 prev_wp = wp
         # In the excpetional case that all waypoints are close together...
@@ -832,7 +842,7 @@ class WaypointPath(object):
         self.newway = self.waypoints[start_index]
         self.wpindex = start_index
         # If we're close to the first waypoint, ignore it and use start_pos
-        if (new_start_pos - self.newway).sqnorm() < WaypointPath._EPSILON_SQ:
+        if (new_start_pos - self.newway).sqnorm() < self.epsilon_sq:
             self.advance()
             self.oldway = new_start_pos
 
@@ -907,7 +917,7 @@ class WaypathVisit(SteeringBehaviour):
     Args:
         owner (SimpleVehicle2d): The vehicle computing this force.
         waypath (WaypointPath): The path to be followed.
-        wayradius (float): Waypoint radius; see below.
+        wayradius (float, optional): Waypoint radius; see below.
 
     A waypoint is visited once the distance to owner is less than *wayradius*.
     In this version; we steer directly at the next waypoint, even if we are
@@ -916,10 +926,13 @@ class WaypathVisit(SteeringBehaviour):
     For the final waypoint, we ARRIVE at it and stay there as long as this
     behaviour remains active. For previous waypoints, we use SEEK.
     """
-    def __init__(self, owner, waypath, wayradius=WaypointPath._RADIUS):
+    def __init__(self, owner, waypath, wayradius=None):
         SteeringBehaviour.__init__(self, owner)
         self.waypath = waypath
-        self.wprad_sq = wayradius**2
+        if wayradius:
+            self.wprad_sq = wayradius**2
+        else:
+            self.wprad_sq = waypath.wayradius_sq
         self.nextwaypt = waypath.newway
         if self.nextwaypt is None:
             raise ValueError('No more waypoints to visit.')
@@ -972,12 +985,15 @@ class WaypathResume(SteeringBehaviour):
                  'DECEL_TWEAK': STEERING_DEFAULTS['ARRIVE_DECEL_TWEAK']}
 
     def __init__(self, owner, waypath, expk=constants['EXP_DECAY'],
-                 wayradius=WaypointPath._RADIUS):
+                 wayradius=None, *, decel_tweak=constants['DECEL_TWEAK']):
         SteeringBehaviour.__init__(self, owner)
         self.waypath = waypath
         self.invk = 1.0/expk
-        self.wprad_sq = wayradius**2
-        self.hesitance = WaypathResume.constants['DECEL_TWEAK']
+        if wayradius:
+            self.wprad_sq = wayradius**2
+        else:
+            self.wprad_sq = waypath.wayradius_sq
+        self.hesitance = decel_tweak
 
     def force(self):
         owner = self.owner
@@ -1002,8 +1018,7 @@ class WaypathResume(SteeringBehaviour):
                     speed = min(dist / self.hesitance, owner.maxspeed)
                     targetvel = (speed/dist)*target_offset
                     return targetvel - owner.vel
-                else:
-                    return ZERO_VECTOR
+                return ZERO_VECTOR
             # ...otherwise, set the SEEK target for later computation.
             else:
                 target = nextwaypt
@@ -1071,7 +1086,6 @@ class FlockSeparate(SteeringBehaviour):
     def __init__(self, owner, scale=constants['FORCE_SCALE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-#        owner.flocking = True
         self.scale = scale
 
     def force(self):
@@ -1094,7 +1108,6 @@ class FlockAlign(SteeringBehaviour):
     def __init__(self, owner):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-#        owner.flocking = True
 
     def force(self):
         result = Point2d(0,0)
@@ -1121,7 +1134,6 @@ class FlockCohesion(SteeringBehaviour):
     def __init__(self, owner, hesitance=constants['HESITANCE']):
         SteeringBehaviour.__init__(self, owner)
         self.owner = owner
-#        owner.flocking = True
         self.hesitance = hesitance*FlockCohesion.constants['DECEL_TWEAK']
 
     def force(self):
@@ -1156,7 +1168,8 @@ class Navigator(object):
         use_budget (boolean): If True (default), use prioritized budgeted force,
             with budget set to vehicle.maxforce
     """
-    _FLOCK_SCALE = STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']
+    constants = {'FLOCK_SCALE': STEERING_DEFAULTS['FLOCKING_RADIUS_MULTIPLIER']}
+
     # Dictionary of defined behaviours for later use
     _steering = {beh.__name__.upper(): beh for beh in SteeringBehaviour.__subclasses__()}
 
@@ -1200,7 +1213,7 @@ class Navigator(object):
             if self.force_update == Navigator.compute_force_budgeted:
                 self.force_update = Navigator.sort_budget_priorities
             # Update count of active flocking behaviours
-            if hasattr(steer_class,'NEEDS_NEIGHBORS'):
+            if hasattr(steer_class, 'NEEDS_NEIGHBORS'):
                 self.active_flocking += 1
         self.active_behaviours[behaviour] = newsteer
 
@@ -1297,7 +1310,8 @@ class Navigator(object):
         self.force_update = Navigator.compute_force_budgeted
         self.force_update(self)
 
-    def update_neighbors(self, vehlist, radius_scale=_FLOCK_SCALE):
+    def update_neighbors(self, vehlist, *,
+                         radius_scale=constants['FLOCK_SCALE']):
         """Populates a list of nearby vehicles, for use with flocking.
 
         Args:
