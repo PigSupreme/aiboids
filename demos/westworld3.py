@@ -16,6 +16,7 @@ import sys
 sys.path.append('..')
 from importlib import import_module
 from aiboids.base_entity import BaseEntity, DummyClock, PostOffice
+import aiboids.statemachine # TODO: Needed only to display state logic
 from gamedata import Characters, GameOver
 
 ##############################################################################
@@ -34,6 +35,9 @@ if __name__ == "__main__":
         cls = getattr(source_mod, source_mod.ENTITY_CLASS)
         entity = cls(ent_name)
         ENTITY_LIST.append(entity)
+
+    # TODO: Move this to an appropriate logger
+    aiboids.statemachine.State.print_state_events()
 
     # Start FSM logic: Must be done AFTER all entities are registered.
     for entity in ENTITY_LIST:

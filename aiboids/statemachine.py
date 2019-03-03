@@ -1,107 +1,117 @@
 #!/usr/bin/env python
 """Module containing basic UML State Machine functionality.
 
-Actual states should be instances of the State class; its documentation shows
-how to define the necessary state logic methods. We provide STATE_NONE as a
-simple example; this can also be used for an concrete initial state.
+----
 
-The object `agent` can be given state machine functionality as follows::
+Actual states should be instances of the State class. We provide STATE_NONE as
+a simple example; this can also be used for an concrete initial state.
 
-    fsm = StateMachine(agent, cur=cur_state, glo=glo_state, pre=pre_state)
+Instances of the State class are initiated with a set of default hooks for the
+state machine logic: on_enter(), on_execute(), on_exit(), and on_msg. These do
+nothing unless overridden as follows:
+
+After calling statename = State(...), the decorator @statename.event is used
+to replace the default hooks. For example::
+
+    STATE_NONE = State('STATE_NONE')
+    @STATE_NONE.event
+    def on_enter(agent):
+        # This will replace STATE_NONE.on_enter()
+        print("WARNING: Agent %s entered STATE_NONE" % agent)
+
+Each enter/execute/exit method must be a callable with a single positional
+parameter: the *agent* using this State's logic.
+
+An on_msg method needs an additional second positional parameter to hold the
+incoming message. It should True/False to indicate whether the message was
+succesfully handled; messages that were not handled by the current state are
+then sent to the global state.
+
+Decorating a function in this way...
+
+----
+
+The Python object `agent` can be given state machine functionality as follows::
+
+    StateMachine(agent, cur=cur_state, glo=glo_state, pre=pre_state)
 
 Keyword arguments are optional; Statemachine.set_state() can be used to set
-states at a later time.
-
-Initializing the StateMachine as above sets `agent.statemachine` = fsm for
-later convenience, thus state logic and messaging can be done with the
+states at a later time. This sets `agent.statemachine` to the newly created
+StateMachine instance, thus state logic and messaging can be done with the
 respective function calls::
 
     agent.statemachine.update()
     agent.statemachine.handle_msg(message)
 
-One can also call these methods directly from the StateMachine itself.
-
 ----
 """
 
 from __future__ import print_function
-import logging
-logging.basicConfig(format="%(message)s")
 
 class State(object):
     """Provides the necessary framework for UML states with trigger events.
 
     Args:
-        name (string): The name of this state; see note below.
+        name (string): The name of this state.
 
-    Instances of this class are initiated with a set of default hooks for the
-    state machine logic: on_enter, on_execute, on_exit, and on_msg.
-
-    The defaults do nothing, but can be overridden on a per-instance basis.
-    Each enter/execute/exit method must be a callable with a single positional
-    parameter: the agent using this State's logic. The on_msg method needs an
-    additional second positional parameter to hold the incoming message.
-
-    After calling statename = State(...), the decorator @statename.event is
-    available to easily replace the default hook methods above. For example::
+    It is recommended that each instance is a CONSTANT_VALUE with a matching
+    name, such as::
 
         STATE_NONE = State('STATE_NONE')
-        @STATE_NONE.event
-        def on_enter(agent):
-            print("WARNING: Agent %s entered STATE_NONE" % agent)
 
-    This will set STATE_NONE.on_enter to the newly-defined function, and
-    automatically print some documentation; see the output of sample_run().
-    When overriding multiple hooks for the same state, the decorator must
-    appear before each new function definition.
-
-    Note:
-        For future compatibility, instantiate each state as a CONSTANT_VALUE
-        with a name that matches, as in the example.
+    See the module docstring for full usage and examples.
     """
     def __init__(self, name):
-        self.on_enter = State.on_dummy
-        self.on_execute = State.on_dummy
-        self.on_exit = State.on_dummy
-        self.on_msg = State.msg_dummy
+        self.on_enter = State._on_dummy
+        self.on_execute = State._on_dummy
+        self.on_exit = State._on_dummy
+        self.on_msg = State._msg_dummy
         self.name = str(name)
         self.register_state(self, name)
 
-    @classmethod
-    # For keeping track of defined states
-    def register_state(cls, state, statename):
-        # TODO: Called internally whenever a new State() is instantiated.
-        # TODO: In the future, we'll use this...somehow.
-        if not hasattr(cls, 'statedir'):
-            cls.statedir = {}
-        cls.statedir[statename] = state
+    @staticmethod
+    def register_state(state, statename):
+        # Called internally when a new state is instantiated.
+        # Keeps track of defined states
+        try:
+            State.statedir[statename] = state
+        except AttributeError:
+            State.statedir = dict()
+            State.statedir[statename] = state
 
     # Dummy placeholder for on{enter/execute/exit} methods.
     @staticmethod
-    def on_dummy(dummy_agent):
+    def _on_dummy(dummy_agent):
         pass
 
     # Dummy placeholder for on_msg.
     @staticmethod
-    def msg_dummy(dummy_agent, dummy_msg):
+    def _msg_dummy(dummy_agent, dummy_msg):
         return False
 
     def event(self, eventhook):
-        """Defines the @state.event decorator as described above."""
+        """Decorator for assigning event functions to this State."""
         if eventhook.__name__ in ('on_enter', 'on_execute', 'on_exit', 'on_msg'):
             setattr(self, eventhook.__name__, eventhook)
-            # Note how we can grab the docstring using the decorator!
-            if eventhook.__doc__:
-                logging.info("%s.%s():" % (str(self.name), eventhook.__name__))
-                logging.info(" %s\n" % eventhook.__doc__)
-                # TODO: We can change the docstring, but need to figure out how autodocs can find it.
-                # setattr(eventhook, "__doc__", "GOAT!")
             # This return value ensures that an Exception is raised if we try
             # to use the decorated function from outside of the given State.
-            # TODO: Instead of print()ing, store for later in a class variable/method?
             return None
         else:
             raise ValueError('State event %s not recognized' % eventhook.__name__)
+
+    @staticmethod
+    def print_state_events():
+        """Lists all defined state events/docstrings; mostly for debugging."""
+        print('\n'+33*'=')
+        for name, state in State.statedir.items():
+            print('--- %s defined events ---' % name)
+            for eventhook in ('on_enter', 'on_execute', 'on_exit'):
+                if state.__getattribute__(eventhook) != State._on_dummy:
+                    print('%s: %s()' % (name, eventhook))
+                    print('   ', state.__getattribute__(eventhook).__doc__, '\n')
+            if state.on_msg != State._msg_dummy:
+                print(name, ': on_msg()')
+                print('   ', state.on_msg.__doc__, '\n')
 
 ################ A very simple State #####################
 #: Used as a default null state by the StateMachine class.
@@ -110,7 +120,7 @@ STATE_NONE = State('STATE_NONE')
 @STATE_NONE.event
 def on_enter(agent):
     """Dummy docstring for discovery by @state.event decorator."""
-    logging.debug("Agent %s entered STATE_NONE" % agent)
+    print("Agent %s entered STATE_NONE" % agent)
 ##########################################################
 
 class StateMachine(object):
@@ -164,14 +174,14 @@ class StateMachine(object):
             self.pre_state = kwargs['pre']
 
     def start(self):
-        """Call on_enter() for global, then current state."""
+        """Calls on_enter() for global, then current state."""
         if self.glo_state:
             self.glo_state.on_enter(self.agent)
         if self.cur_state:
             self.cur_state.on_enter(self.agent)
 
     def update(self):
-        """Call on_execute() for global, then current state."""
+        """Calls on_execute() for global, then current state."""
         # First execute a global state if it exists
         if self.glo_state:
             self.glo_state.on_execute(self.agent)
@@ -180,7 +190,7 @@ class StateMachine(object):
             self.cur_state.on_execute(self.agent)
 
     def shutdown(self):
-        """Call on_exit() for global, then current state."""
+        """Calls on_exit() for global, then current state."""
         if self.glo_state:
             self.glo_state.on_exit(self.agent)
         if self.cur_state:
@@ -271,6 +281,8 @@ def sample_run():
         # Not the best place for this, but an excuse to demo on_exit().
         agent.counter += 1
 #####################################################################
+
+    State.print_state_events()
 
     # Initialize the Turnstile object and state machine
     thing = Turnstile()

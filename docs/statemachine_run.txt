@@ -1,22 +1,24 @@
-STATE_NONE.on_enter() docstring:
- Dummy docstring for discovery by @state.event decorator.
+=================================
+--- STATE_NONE defined events ---
+STATE_NONE: on_enter()
+    Dummy docstring for discovery by @state.event decorator. 
 
-TURNSTILE_LOCKED.on_msg() docstring:
- Acts on the following messages:
+--- TURNSTILE_LOCKED defined events ---
+TURNSTILE_LOCKED : on_msg()
+    Acts on the following messages:
         * 'COIN': Change state to TURNSTILE_UNLOCKED.
         * 'PUSH': Access denied; print some text.
-        
+         
 
-TURNSTILE_UNLOCKED.on_msg() docstring:
- Acts on the following messages:
+--- TURNSTILE_UNLOCKED defined events ---
+TURNSTILE_UNLOCKED: on_exit()
+    Increment turnstile counter. 
+
+TURNSTILE_UNLOCKED : on_msg()
+    Acts on the following messages:
         * 'PUSH': Change state to TURNSTILE_LOCKED.
-        
+         
 
-TURNSTILE_UNLOCKED.on_exit() docstring:
- Increment turnstile counter.
-        
-
-WARNING: Agent <__main__.Turnstile object at 0x7fbce9f6c910> entered STATE_NONE
 
 Update 1:
 
