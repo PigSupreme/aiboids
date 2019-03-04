@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """Module for defining and managing game-type entities.
 
 Use subclasses of BaseEntity for agents that need a unique identifier,
@@ -34,15 +34,12 @@ To send a messages directly, without using a BaseEntity::
 
 The documenation for PostOffice.post_msg() has a complete explanation of usage
 and keyword arguments.
+
+TODO: Docstring examples need tweaking to work under doctest.
 """
 
-# for python3 compat
-#from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-
 from collections import namedtuple  # For EntityMessage structure
-import heapq  # For PostOffice message queue
+import sched  # For automatic scheduling of delayed messages
 
 class BaseEntity(object):
     """Abstract Base Class for objects with an ID, update, and messaging.
@@ -64,15 +61,10 @@ class BaseEntity(object):
         >>> goat.receive_msg('Hey, goat!')
         Traceback (most recent call last):
         NotImplementedError: THIS_GOAT of <class '__main__.BaseEntity'> has undefined receive_msg().
-
-    Todo:
-        Figure out a useful implemenation for invalid entities that will work
-        with deleting/removing entities from the registry.
     """
 
-    # TODO: Implement this better.
     _INVALID_ID = 'INVALID_ENTITY'
-    _registry = {_INVALID_ID: None}
+    _registry = dict()
 
     def __init__(self, id_string):
         if id_string in BaseEntity._registry:
@@ -94,9 +86,10 @@ class BaseEntity(object):
     def idstr(self):
         """Get the user-supplied ID string of this entity.
 
-        >>> ent = BaseEntity('SOME_PIG')
-        >>> print(ent.idstr)
-        SOME_PIG
+        Example:
+            >>> ent = BaseEntity('SOME_PIG')
+            >>> print(ent.idstr)
+            SOME_PIG
         """
         return self._mySTR
 
@@ -118,6 +111,8 @@ class BaseEntity(object):
         """
         try:
             result = BaseEntity._registry[id_str]
+            if result == BaseEntity._INVALID_ID:
+                return None
         except KeyError:
             result = None
         return result
@@ -129,13 +124,8 @@ class BaseEntity(object):
         Syntax for this is `BaseEntity.update_all()`.
         """
         for entity in BaseEntity._registry.values():
-        #TODO: try..except is needed only for the default entry in _registry
-        #TODO: We possibly need better error-checking
-            try:
+            if entity != BaseEntity._INVALID_ID:
                 entity.update()
-            except AttributeError:
-                if entity is not None:
-                    raise
 
     @staticmethod
     def call_on_all(func, *args, **kwargs):
@@ -144,20 +134,39 @@ class BaseEntity(object):
         >>> entlist = []
         >>> getid  = lambda entity: entlist.append(entity.idstr)
         >>> BaseEntity.call_on_all(getid)
-        >>> entlist.sort()
-        >>> entlist
+        >>> sorted(entlist)
         ['ANY_FISH', 'RED_HERRING', 'THIS_GOAT']
-
-        Note:
-            doctest.testmod() seems to be running tests in alphabetic order,
-            so BaseEnitty.idstr hasn't been tested, and SOME_PIG is missing.
         """
         for entity in BaseEntity._registry.values():
-            try:
+            if entity != BaseEntity._INVALID_ID:
                 func(entity, *args, **kwargs)
-            except AttributeError:
-                if entity is not None:
-                    raise
+
+    @staticmethod
+    def remove(id_str, delete=True):
+        """Remove an entity's from the registry using its ID String.
+
+        Args:
+            id_str (string): The ID string of the entity.
+            delete (boolean): If True (default), the entity with this ID is
+                deleted after unregistering.
+
+        Note:
+            To avoid reference issues, an ID string that gets removed will not
+            be available for later use
+
+        >>> BaseEntity.remove('RED_HERRING')
+        >>> print(BaseEntity.by_id('RED_HERRING'))
+        None
+        >>> BaseEntity('RED_HERRING')
+        Traceback (most recent call last):
+        ValueError: EntityID RED_HERRING has already been used.
+        """
+        entity = BaseEntity.by_id(id_str)
+        if entity:
+            BaseEntity._registry[id_str] = BaseEntity._INVALID_ID
+            if delete:
+                del entity
+
 
     # Note: This function will be picked up by autodocs, but is overridden
     # automatically when a PostOffice() is instantiated.
@@ -188,50 +197,45 @@ class BaseEntity(object):
     # won't be picked up by autodocs (unless private members are enabled).
     @staticmethod
     def _set_postoffice(postoffice):
-        """Called by PostOffice.__init__() to set up messaging functions."""
-        BaseEntity.postoffice = postoffice
+        """Called by PostOffice.__init__() to set up messaging functions.
 
+        When a PostOffice is initialized, this function is called to update the
+        BaseEntity.send_msg() method, eliminating the need for each entity to
+        keep track of the PostOffice.
+        """
         def send_msg(self, recv_id, msg_tag, extra=None, **kwargs):
-            """Can be used by entities to send messages; see below for usage.
-
-            Args:
-                recv_id: ID of the recipient, compatible with BaseEntity.by_id().
-                msg_tag (string): A general tag/type for the message; see below.
-                extra: Optional message information; see below.
-
-            Once a PostOffice has been initialized, entity.send_msg() is available;
-            this eliminates the need for each entity to keep track of the PostOffice.
-            See PostOffice.post_msg() docs for additional usage information.
-            """
-        # TODO: Use functools.partial to simplify this and reduce function call overhead.
-        # TODO: Additional functionality/syntax for sending messages to oneself?
+            """Replaces BaseEntity.send_msg to use the new PostOffice."""
             postoffice.post_msg(self.idstr, recv_id, msg_tag, extra, **kwargs)
+        BaseEntity.postoffice = postoffice
         BaseEntity.send_msg = send_msg
 
 class PostOffice(object):
     """Class for posting/handling messages between entities.
 
     Args:
-        clock: An object with a time() method (callable with no parameters).
+        scheduler (sched.scheduler): See below.
 
-    The PostOffice uses its assigned `clock` in order to manage timestamps and
-    the delivery schedule. A very basic clock class, DummyClock, is provided
-    for demonstration purposes. If using any kind of delayed messages, be sure
-    to periodically update the clock and call PostOffice.dispatch_queued().
+    The PostOffice needs an external scheduler (from sched.py) to manage
+    timestamps and handle delivery of delayed messages. Whenever a PostOffice()
+    is instantiated, the BaseEntity.send_msg() method (described above) is
+    automatically updated to use the new PostOffice().
 
-    See the post_msg() method for full details on sending messages.
-
-    Whenever a PostOffice() is instantiated, the BaseEntity.send_msg() method
-    (described above) is automatically updated to use the new PostOffice().
+    See the post_msg() method below for full details on sending messages.
     """
     class EntityMessage(namedtuple('Message', 'MSG_TYPE, TIMESTAMP, SEND_ID, RECV_ID, EXTRA')):
         """An envelope/message format; internal use only."""
 
-    def __init__(self, clock):
-        self.message_q = [] # Internally, this uses a heap.
-        self.clock = clock  # For time-keeping, must have a time() method.
+    def __init__(self, scheduler):
+        self.scheduler = scheduler
+        self.DELAY_PRIORITY = 2 # Schedule priority for delayed messages
         self.lookup = BaseEntity.by_id # For entity lookup
         BaseEntity._set_postoffice(self)
+
+    def _deliver(self, message):
+        """Used internally by the scheduler to deliver delayed messages."""
+        receiver = self.lookup(message.RECV_ID)
+        if receiver:
+            receiver.receive_msg(message)
 
     def post_msg(self, send_id, recv_id, msg_tag, extra=None, **kwargs):
         """Send a message now or add to the queue for later delivery.
@@ -247,18 +251,16 @@ class PostOffice(object):
                 is ignored; see below.
             delay (float): Deliver after this amount of time; see below.
 
-        The `msg_tag` is intended for simple messages; in some cases, this is
+        The `msg_tag` is intended for simple messages; in many cases this is
         sufficient. For more complex messaging needs, the tag can be used as a
         category, and more specific information can be included using `extra`.
         In any case, the receiver has sole responsibility for dealing with any
         messages; it may even choose to ignore them completely.
 
         Messages with the `at_time` or `delay` keyword (the first supercedes
-        the second) are scheduled based on the PostOffice's clock.time(). If
-        neither option is given or the scheduled time is computed to be in the
-        past, the message gets delivered immediately. The dispatch_queued()
-        function must be called periodically in order for delayed messages to
-        be processed and delivered.
+        the second) use the _scheduler_ to compute delivery times. If neither
+        option is given or the scheduled time is in the past, the message gets
+        delivered as soon as possible.
 
         For now, any message that fails to deliver is just discarded, but this
         behaviour may change in the future.
@@ -268,8 +270,8 @@ class PostOffice(object):
         if not receiver:
             return None
 
-        # Compute the timestamp using kwargs
-        time_now = self.clock.time()
+        # Compute the timestamp using the external scheduler:
+        time_now = self.scheduler.timefunc()
         if 'at_time' in kwargs.keys():
             timestamp = kwargs['at_time']
         elif 'delay' in kwargs.keys():
@@ -279,39 +281,33 @@ class PostOffice(object):
 
         # Create the actual message object
         message = PostOffice.EntityMessage(msg_tag, timestamp, send_id, recv_id, extra)
-        if timestamp <= time_now:
-            # Discharge immediately
+        if timestamp <= time_now: # Discharge immediately
             receiver.receive_msg(message)
-        else:
-            # Add this message to the delayed queue
-            heapq.heappush(self.message_q, (timestamp, message))
+        else: # Add this message to the delayed queue and schedule delivery
+            self.scheduler.enterabs(timestamp, self.DELAY_PRIORITY, self._deliver, (message,))
 
-    def dispatch_queued(self):
-        """Checks for and dispatches messages from the delayed message queue."""
-        # Dispatch messages until queue empty or next message in the future
-        time_now = self.clock.time()
-        while len(self.message_q) > 0 and self.message_q[0][0] <= time_now:
-            msg = heapq.heappop(self.message_q)[1]
-            receiver = self.lookup(msg.RECV_ID)
-            if receiver:
-                receiver.receive_msg(msg)
+    def update(self):
+        """Use to force update of the delayed message queue."""
+        self.scheduler.run(False)
 
 class DummyClock(object):
-    """A clock-like object for a simulated discrete timeline.
-
-    When initiated, clock time is set to 0. Call the tick() method to increase
-    the time by 1, thus time() will always be a non-negative integer.
-    """
+    """A clock-like object for a simulated timeline, starting at 0.0."""
     def __init__(self):
-        self.now = 0
-    def tick(self):
-        self.now += 1
+        self.now = 0.0
+
+    def tick(self, increment=1.0):
+        """Advance the clock by the given amount."""
+        self.now += max(0.0, increment)
+
     def time(self):
+        """The current clock time."""
         return self.now
+
 
 def sample_run():
     """Demo showing the various types of messaging."""
     class SampleEnt(BaseEntity):
+        """Example BaseEntity subclass for demo."""
         def update(self):
             print("(%s): Nothing to see here..." % self.idstr)
         def receive_msg(self, message):
@@ -319,37 +315,31 @@ def sample_run():
 
     # Initialization
     mc = DummyClock()
-    po = PostOffice(mc)
+    sch = sched.scheduler(mc.time, mc.tick)
+    po = PostOffice(sch)
     this = SampleEnt('THIS_ENT')
     that = SampleEnt('THAT_ENT')
 
-    # Time = 1
-    mc.tick()
-    print("# Time is now %d" % mc.time())
-    BaseEntity.update_all()
-    this.send_msg('THIS_ENT', 'IMMEDIATE')
-    po.dispatch_queued()
+    MAXTIME = 5
+    def auto_tick(clock):
+        """Used to schedule/propagate automatic clock and entity updates."""
+        print('*** Clock *** Time is now %d' % clock.time())
+        if 1 + clock.time() <= MAXTIME:
+            sch.enter(1, 0, auto_tick, (clock,))
+            sch.enter(1, 0.5, BaseEntity.update_all)
+        else:
+            print('*** Clock *** This will be the last automatic update.')
 
-    # Time = 2
-    mc.tick()
-    print("# Time is now %d" % mc.time())
-    BaseEntity.update_all()
-    this.send_msg('THAT_ENT', 'RELATIVE_TIME', delay=2)
-    that.send_msg('THIS_ENT', 'ABSOLUTE_TIME', at_time=2)
+    # Schedule some messages
+    sch.enterabs(1, 1, this.send_msg, ('THIS_ENT', 'IMMEDIATE'))
+    sch.enterabs(2, 1, this.send_msg, ('THAT_ENT', 'RELATIVE_TIME'), {'delay': 2.2})
+    sch.enterabs(2, 1, that.send_msg, ('THIS_ENT', 'ABSOLUTE_TIME'), {'at_time': 3.3})
+    sch.enterabs(3, 1, po.post_msg, ('THAT_ENT', 'THIS_ENT', 'VIA_POSTOFFICE'), {'delay': 6})
+    sch.enterabs(4, 1, that.send_msg, ('THIS_ENT', 'WITH EXTRAS'), {'extra': "Hey stuff!"})
 
-    # Time = 3
-    mc.tick()
-    print("# Time is now %d" % mc.time())
-    BaseEntity.update_all()
-    po.post_msg('THAT_ENT', 'THIS_ENT', 'VIA_POSTOFFICE', delay=1)
-    po.dispatch_queued()
-
-    # Time = 4
-    mc.tick()
-    print("# Time is now %d" % mc.time())
-    BaseEntity.update_all()
-    po.dispatch_queued()
+    # Start the clock and run the schedule
+    auto_tick(mc)
+    sch.run()
 
 if __name__ == "__main__":
-    # TODO: Doctests need some tweaking due to order of execution.
     sample_run()

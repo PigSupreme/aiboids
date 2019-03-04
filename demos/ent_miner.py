@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Miner Entity using simple FSM functionality.
-"""
+"""Miner Entity using simple FSM functionality."""
 
 # for python3 compat
 from __future__ import unicode_literals
@@ -47,8 +46,8 @@ def on_execute(agent):
     """Increase fatigue and dig for gold.
 
     StateChange:
-        * Pockets are Full -> DEPOSIT GOLD
-        * Thirsty -> DRINK_AT_SALOON
+        * Pockets are Full --> DEPOSIT GOLD
+        * Thirsty --> DRINK_AT_SALOON
     """
     agent.add_fatigue(1)
 
@@ -91,8 +90,8 @@ def on_execute(agent):
     """Deposit all the gold being carried, and check for victory.
 
     StateChange:
-    * If work_done (enough money in bank) -> REST_AT_HOME
-    * Otherwise -> DIG_IN_MINE
+    * If work_done (enough money in bank) --> REST_AT_HOME
+    * Otherwise --> DIG_IN_MINE
     """
     deposit = agent.gold
     if deposit > 0:
@@ -131,7 +130,7 @@ def on_execute(agent):
     """Drink until I've quenched my thirst.
 
     StateChange:
-    * When no longer thirsty -> revert to previous
+    * When no longer thirsty --> revert to previous
     """
     print("%s : Havin' a whiskey...mighty refreshin'!" % agent.name)
     agent.remove_thirst(5)
@@ -163,7 +162,7 @@ def on_execute(agent):
     """Sleep until rested or woken for dinner.
 
     StateChange:
-    * When fully rested -> DIG_IN_MINE
+    * When fully rested --> DIG_IN_MINE
     """
     # Take a nap if not fully rested
     if agent.fatigue > 0:
@@ -178,7 +177,7 @@ def on_msg(agent, message):
     """Wake up when dinner is ready.
 
     Messages:
-    * STEW_READY: If from my spouse, change state -> EAT_STEW
+    * STEW_READY: If from my spouse, change state --> EAT_STEW
     """
     if message.MSG_TYPE == MsgTypes.STEW_READY:
         if message.SEND_ID == agent.spouse_id and agent.location == Locations.SHACK:
@@ -201,7 +200,7 @@ def on_execute(agent):
     """Eat that tasty stew and recover some fatigue.
 
     StateChange:
-        update(1) -> revert to previous
+        update(1) --> revert to previous
     """
     print("%s : That's some might fine stew...thank ya much, Elsa!" % agent.name)
     agent.remove_fatigue(5)
@@ -301,3 +300,6 @@ class Miner(BaseEntity):
             return True
         else:
             return False
+
+    def final_score(self):
+        return 'Deposited %d gold nuggets.' % self.bank
