@@ -34,8 +34,6 @@ To send a messages directly, without using a BaseEntity::
 
 The documenation for PostOffice.post_msg() has a complete explanation of usage
 and keyword arguments.
-
-TODO: Docstring examples need tweaking to work under doctest.
 """
 
 from collections import namedtuple  # For EntityMessage structure
@@ -57,10 +55,10 @@ class BaseEntity(object):
         ValueError: EntityID THIS_GOAT has already been used.
         >>> goat.update()
         Traceback (most recent call last):
-        NotImplementedError: THIS_GOAT of <class '__main__.BaseEntity'> has undefined update().
+        NotImplementedError: THIS_GOAT of <class 'aiboids.base_entity.BaseEntity'> has undefined update().
         >>> goat.receive_msg('Hey, goat!')
         Traceback (most recent call last):
-        NotImplementedError: THIS_GOAT of <class '__main__.BaseEntity'> has undefined receive_msg().
+        NotImplementedError: THIS_GOAT of <class 'aiboids.base_entity.BaseEntity'> has undefined receive_msg().
     """
 
     _INVALID_ID = 'INVALID_ENTITY'
