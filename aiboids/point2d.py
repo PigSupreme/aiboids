@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
-from math import sqrt, acos, cos, sin
+from math import sqrt, acos, cos, sin, isnan
 
 class Point2d(object):
     """A two-dimensional vector of floats, defaulting to <0.0, 0.0>.
@@ -33,16 +33,7 @@ class Point2d(object):
         self.nt = (float(x), float(y))
 
     def __getitem__(self, index):
-        """Vector components; indexed starting at 0. For internal use only.
-
-        >>> a = Point2d(1,-2)
-        >>> [a[0], a[1]]   # For doctest only; use the syntax below instead.
-        [1.0, -2.0]
-        >>> [a.x, a.y]     # Preferred usage; same result.
-        [1.0, -2.0]
-        >>> a.ntuple       # Use this to get the vector as a python tuple.
-        (1.0, -2.0)
-        """
+        # Vector components; indexed starting at 0. For internal use only.
         return self.nt[index]
 
     @property
@@ -150,8 +141,12 @@ class Point2d(object):
         Traceback (most recent call last):
         NotImplementedError: Compound assignment for dot product is not supported.
         """
+        
         try:
-            return (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
+            result = (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
+            if isnan(result):
+                raise OverflowError
+            return result
         except AttributeError:
             return NotImplemented
 
