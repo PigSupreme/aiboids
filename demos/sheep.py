@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 """AiBoids flocking demo wiyh pygame rendering."""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import sys
 from random import randint
 
@@ -111,7 +105,8 @@ if __name__ == "__main__":
 ##############################
     ticks = 0
     align_on = True
-    while 1:
+    b_running = True
+    while b_running:
         ticks = ticks + 1
 
         if ticks > TIME_PERIOD:
@@ -147,7 +142,19 @@ if __name__ == "__main__":
             for sheep in sheep_list:
                 for other in sheep.neighbor_list:
                     if other is not sheep:
-                        pygame.draw.line(SCREEN, (0, 128, 0), sheep.pos.ntuple, other.pos.ntuple)
+                        # Pygame wants explicit conversion to int
+                        this_center = (int(sheep.pos.x), int(sheep.pos.y))
+                        other_center = (int(other.pos.x), int(other.pos.y))
+                        pygame.draw.line(SCREEN, (0, 128, 0), this_center, other_center)
 
         allsprites.draw(SCREEN)
         pygame.display.flip()
+        
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+    ### End of main loop ###
+    pygame.quit()
+

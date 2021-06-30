@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 """Improved Waypoint steering demo."""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
@@ -76,7 +70,7 @@ if __name__ == "__main__":
         if d_min_sq > min_dist_sq:
             waylist.append(newp)
 
-    # Green (WAYPATHTRAVERSE)
+    # Green (WAYPATHTRAVERSE; stops at final waypoint)
     glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
     gpath.resume_at_nearest_from(green.pos)
@@ -88,13 +82,9 @@ if __name__ == "__main__":
     ypath.resume_at_nearest_from(yellow.pos)
     yellow.navigator.set_steering('WAYPATHRESUME', ypath)
 
+    b_running = True
     ### Main loop ###
-    while 1:
-        for event in pygame.event.get():
-            if event.type in [QUIT, MOUSEBUTTONDOWN]:
-                pygame.quit()
-                sys.exit()
-
+    while b_running:
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
@@ -108,3 +98,11 @@ if __name__ == "__main__":
         pygame.draw.lines(screen, (55,55,55), True, waylist, 2)
         allsprites.draw(screen)
         pygame.display.flip()
+
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+    ### End of main loop ###
+    pygame.quit()

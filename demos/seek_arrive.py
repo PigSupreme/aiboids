@@ -1,11 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """SEEK and ARRIVE steering demo."""
-
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
 
 import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
@@ -76,15 +70,11 @@ if __name__ == "__main__":
     # Red (ARRIVE with hesitance)
     red.navigator.set_steering('ARRIVE', targs[2].pos, 8.0)
 
-    ### Main loop ###
+    b_running = True
     ticks = 0
     TARGET_FREQ = 75
-    while 1:
-        for event in pygame.event.get():
-            if event.type in [QUIT, MOUSEBUTTONDOWN]:
-                pygame.quit()
-                sys.exit()
-
+    ### Main loop ###
+    while b_running:
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
@@ -117,3 +107,10 @@ if __name__ == "__main__":
         allsprites.draw(screen)
         pygame.display.flip()
 
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+    ### End of main loop ###
+    pygame.quit()
