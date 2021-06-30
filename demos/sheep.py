@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 """AiBoids flocking demo wiyh pygame rendering."""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import sys
 from random import randint
 
@@ -36,6 +30,12 @@ if __name__ == "__main__":
     NUMSHEEP = 29
     SHEEP_RADIUS = 20
     DOG_RADIUS = 20
+    WHISKER_FRONT = SHEEP_RADIUS*1.25
+    WHISKER_SIDES = SHEEP_RADIUS*1.1
+    WALL_WHISKERS = [WHISKER_FRONT*Point2d(1,0),
+                     WHISKER_SIDES*Point2d(1,1).unit(),
+                     WHISKER_SIDES*Point2d(1,-1).unit()
+                     ]
     NUMVEHICLES = NUMSHEEP + 1
     NUMOBSTACLES = 12
 
@@ -46,7 +46,7 @@ if __name__ == "__main__":
     images = dict()
     images['green'] = pgrender.boid_chevron(SHEEP_RADIUS, (0, 222, 0), (0, 0, 0))
     images['yellow'] = pgrender.boid_chevron(DOG_RADIUS, (222, 222, 0), (0, 0, 0))
-    
+
     # (radius, mass, maxspeed, maxforce, spritedata)
     SHEEP_DATA = (SHEEP_RADIUS, 1.0, 8.0, 6.0, images['green'])
     DOG_DATA = (DOG_RADIUS, 1.0, 10.0, 6.0, images['yellow'])
@@ -98,14 +98,15 @@ if __name__ == "__main__":
     # All creatures avoid obstacles and walls
     for veh in vehicles:
         veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 25.0, wall_list)
+        veh.navigator.set_steering('WALLAVOID', WALL_WHISKERS, wall_list)
 
 ##############################
 # Main loop
 ##############################
     ticks = 0
     align_on = True
-    while 1:
+    b_running = True
+    while b_running:
         ticks = ticks + 1
 
         if ticks > TIME_PERIOD:
@@ -141,7 +142,19 @@ if __name__ == "__main__":
             for sheep in sheep_list:
                 for other in sheep.neighbor_list:
                     if other is not sheep:
-                        pygame.draw.line(SCREEN, (0, 128, 0), sheep.pos.ntuple, other.pos.ntuple)
+                        # Pygame wants explicit conversion to int
+                        this_center = (int(sheep.pos.x), int(sheep.pos.y))
+                        other_center = (int(other.pos.x), int(other.pos.y))
+                        pygame.draw.line(SCREEN, (0, 128, 0), this_center, other_center)
 
         allsprites.draw(SCREEN)
         pygame.display.flip()
+        
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+    ### End of main loop ###
+    pygame.quit()
+

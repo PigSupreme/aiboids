@@ -53,6 +53,9 @@ OBSTACLEAVOID_MIN_LENGTH = 35.0
 #: Tweaking constant for braking force of AVOID obstacles.
 OBSTACLEAVOID_BRAKE_WEIGHT = 0.01
 
+#: Some kind of tweak currently used by OBSTACLESKIM
+OBSTACLE_REACT_TIME = 200.0
+
 #: TAKECOVER: ARRIVE at the hiding spot with this hesitance.
 TAKECOVER_ARRIVE_HESITANCE = 1.0
 #: To avoid obstacle jitter, our effective bounding radius is multiplied by
@@ -68,9 +71,6 @@ TAKECOVER_EVADE_MULT = 1.5
 TAKECOVER_STALK_COS = -0.5  # cos(120 degrees)
 #: For stalking, hide only when within a certain distance; see above.
 TAKECOVER_STALK_DSQ = 300.0**2
-
-#: WALLAVOID: Proportional length of side whiskers relative to front whisker.
-WALLAVOID_SIDE_SCALE = 0.8
 
 #: PURSUE: If prey is "close enough" and coming right at us, just SEEK.
 PURSUE_POUNCE_DISTANCE = 100.0
@@ -133,9 +133,9 @@ STEERING_DEFAULTS = {
     'WANDER_DISTANCE': WANDER_DISTANCE,
     'WANDER_RADIUS': WANDER_RADIUS,
     'WANDER_JITTER': WANDER_JITTER,
-    'WALLAVOID_SIDE_SCALE': WALLAVOID_SIDE_SCALE,
     'OBSTACLEAVOID_BRAKE_WEIGHT': OBSTACLEAVOID_BRAKE_WEIGHT,
     'OBSTACLEAVOID_MIN_LENGTH': OBSTACLEAVOID_MIN_LENGTH,
+    'OBSTACLE_REACT_TIME' : OBSTACLE_REACT_TIME,
     'TAKECOVER_STALK_COS': TAKECOVER_STALK_COS,
     'TAKECOVER_STALK_DSQ': TAKECOVER_STALK_DSQ,
     'TAKECOVER_EVADE_MULT': TAKECOVER_EVADE_MULT,
@@ -159,6 +159,7 @@ PRIORITY_DEFAULTS = [
     'BRAKE',
     'WALLAVOID',
     'OBSTACLEAVOID',
+    'OBSTACLESKIM',
     'FLOCKSEPARATE',
     'FLEE',
     'EVADE',
@@ -170,6 +171,7 @@ PRIORITY_DEFAULTS = [
     'FOLLOW',
     'WAYPATHRESUME',
     'WAYPATHVISIT',
+    'SIDESLIP',
     'FLOCKCOHESION',
     'FLOCKALIGN',
     'FLOWFOLLOW',

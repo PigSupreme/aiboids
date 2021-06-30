@@ -1,11 +1,5 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 """SEEK and ARRIVE steering demo."""
-
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
 
 import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
@@ -33,8 +27,7 @@ if __name__ == "__main__":
     # Number of vehicles and obstacles
     numveh = 3
     numtargs = numveh
-    numobs = 0
-    total = numveh + numtargs + numobs
+    total = numveh + numtargs
 
     # Images for pygame sprites
     images = dict()
@@ -65,21 +58,8 @@ if __name__ == "__main__":
         targs.append(target)
         rgroup.append(target.sprite)
 
-    # Static obstacles for pygame (randomly-generated positions)
-    obslist, obs_sprites = pgrender.scattered_obstacles(numobs, 15, SCREEN_SIZE)
-    rgroup.extend(obs_sprites)
-
-    # Static Walls for pygame (near screen boundary only)
-    wall_list, wall_sprites = pgrender.boundary_walls(SCREEN_SIZE)
-    rgroup.extend(wall_sprites)
-
     # Set-up pygame rendering
     allsprites = pygame.sprite.RenderPlain(rgroup)
-
-    # All vehicles avoid obstacles and walls
-    for veh in vehicles:
-        veh.navigator.set_steering('OBSTACLEAVOID', obslist)
-        veh.navigator.set_steering('WALLAVOID', 30.0, wall_list)
 
     # Green (SEEK demo)
     green.navigator.set_steering('SEEK', targs[0].pos)
@@ -90,15 +70,11 @@ if __name__ == "__main__":
     # Red (ARRIVE with hesitance)
     red.navigator.set_steering('ARRIVE', targs[2].pos, 8.0)
 
-    ### Main loop ###
+    b_running = True
     ticks = 0
     TARGET_FREQ = 75
-    while 1:
-        for event in pygame.event.get():
-            if event.type in [QUIT, MOUSEBUTTONDOWN]:
-                pygame.quit()
-                sys.exit()
-
+    ### Main loop ###
+    while b_running:
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
@@ -131,3 +107,10 @@ if __name__ == "__main__":
         allsprites.draw(screen)
         pygame.display.flip()
 
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+    ### End of main loop ###
+    pygame.quit()
