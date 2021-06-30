@@ -1,12 +1,6 @@
 #!/usr/bin/env python
 """Improved TAKECOVER/STALKING steering demo."""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 import sys, pygame
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
@@ -84,13 +78,9 @@ if __name__ == "__main__":
     # Purple (TAKECOVER from Green, with stalking)
     purple.navigator.set_steering('TAKECOVER', green, obslist, 500.0, stalk=True)
 
+    b_running = True
     ### Main loop ###
-    while 1:
-        for event in pygame.event.get():
-            if event.type in [QUIT, MOUSEBUTTONDOWN]:
-                pygame.quit()
-                sys.exit()
-
+    while b_running:
         # Update Vehicles via their Navigators (this includes movement)
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
@@ -103,3 +93,12 @@ if __name__ == "__main__":
         screen.fill(bgcolor)
         allsprites.draw(screen)
         pygame.display.flip()
+
+        # Check for exit
+        for event in pygame.event.get():
+            if event.type in [QUIT, MOUSEBUTTONDOWN]:
+                b_running = False
+
+        ## End of main loop ##
+
+    pygame.quit()

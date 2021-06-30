@@ -457,7 +457,7 @@ class TakeCover(SteeringBehaviour):
         self.evade_helper = Evade(owner, target, evade_mult*max_range)
         # ARRIVE needs a fixed position as its target; it's not worth using a
         # seperate instance here. But we still need the effective hesistance.
-        self.hesitance = hesitance.TakeCoverConstants['DECEL_TWEAK']
+        self.hesitance = hesitance
 
     def force(self):
         best_pos = None

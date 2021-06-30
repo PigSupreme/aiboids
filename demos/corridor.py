@@ -1,11 +1,5 @@
-#!/usr/bin/env python
-"""Corridor/lane traversal using WALLAVOID, with end plot."""
-
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+#!/usr/bin/env python3
+"""Corridor/lane traversal using WALLAVOID."""
 
 import sys
 import pygame
@@ -20,17 +14,11 @@ from aiboids.vehicle2d import SimpleVehicle2d, BaseWall2d
 
 from aiboids import pgrender
 
-
 if __name__ == "__main__":
     # Display set-up
     SCREEN_SIZE = (800, 640)
-    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'Corridor/lane steering demo.')
+    screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'Corridor/lane steering demo with WALLAVOID.')
     UPDATE_SPEED = 0.5
-
-    # Number of vehicles and obstacles
-    numveh = 1
-    numobs = 0
-    total = numveh + numobs
 
     # Waypoint/path information
     OFFSETX, OFFSETY = 80, 15
@@ -60,7 +48,7 @@ if __name__ == "__main__":
     vehicles = [green]
     rgroup = [veh.sprite for veh in vehicles]
 
-    # Static Walls (used for corridor/lane)
+    # Static Walls (used to keep vehicle in corridor/lane)
     spdata = pgrender.WALL_DATA
     wall_list = [BaseWall2d((midx, midy-OFFSETY), corlen, 5, Point2d(0,1), spdata),
                  BaseWall2d((midx, midy+OFFSETY), corlen, 5, Point2d(0,-1), spdata)
@@ -78,16 +66,12 @@ if __name__ == "__main__":
     nav.set_steering('WALLAVOID', WALL_WHISKERS, wall_list)
     nav.pause_steering('WALLAVOID')
     in_lane = False
-
-    # Logging for end plot
-    glog = []
     b_running = True
 
     ### Main loop ###
     while b_running:
 
         # Update Vehicles via their Navigators (this includes movement)
-        glog.append(green.pos.ntuple)
         for veh in vehicles:
             veh.move(UPDATE_SPEED)
 
@@ -110,7 +94,3 @@ if __name__ == "__main__":
             if event.type in [QUIT, MOUSEBUTTONDOWN]:
                 pygame.quit()
                 b_running = False
-
-    import matplotlib.pyplot as plt
-    plt.plot([p[0] for p in glog], [p[1] for p in glog])
-    plt.show()
