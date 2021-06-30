@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 """AiBoids flocking demo wiyh pygame rendering."""
 
-import sys
+import pygame, sys, os
+from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
 
-import pygame
-from pygame.locals import QUIT, MOUSEBUTTONDOWN
+INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-# We assume this file lives in aiboids/demos
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d
 from aiboids import pgrender
-
-INF = float('inf')
 
 if __name__ == "__main__":
     # Display set-up
@@ -148,8 +148,9 @@ if __name__ == "__main__":
                         pygame.draw.line(SCREEN, (0, 128, 0), this_center, other_center)
 
         allsprites.draw(SCREEN)
+        pygame.time.delay(5)
         pygame.display.flip()
-        
+
         # Check for exit
         for event in pygame.event.get():
             if event.type in [QUIT, MOUSEBUTTONDOWN]:

@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
 """SEEK and ARRIVE steering demo."""
 
-import sys, pygame
+import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
 
 INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d, ZERO_VECTOR
 from aiboids.vehicle2d import BasePointMass2d, SimpleVehicle2d
 from aiboids import pgrender
-
 
 if __name__ == "__main__":
     # Display set-up

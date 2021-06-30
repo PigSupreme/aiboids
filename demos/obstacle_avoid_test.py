@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Waypath with obstacle interaction test. Matplotlib only."""
 
-import sys
+import sys, os
 try:
     from matplotlib import pyplot as plt
 except ImportError:
@@ -9,8 +9,11 @@ except ImportError:
     sys.exit()
 INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d, SimpleObstacle2d
 from aiboids.steering import WaypointPath

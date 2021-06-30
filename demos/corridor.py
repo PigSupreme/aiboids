@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """Corridor/lane traversal using WALLAVOID."""
 
-import sys
-import pygame
+import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 
 INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d, BaseWall2d
-
 from aiboids import pgrender
 
 if __name__ == "__main__":
