@@ -1,13 +1,9 @@
-#!/usr/bin/env python
-"""Tangent line obstacle avoidance experiment."""
-
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
+#!/usr/bin/env python3
+"""Tangent line obstacle avoidance experiment. Matplotlib only."""
 
 import sys
+from math import sqrt
+from matplotlib import pyplot as plt
 
 INF = float('inf')
 
@@ -47,9 +43,9 @@ SimpleVehicle2d.vehiclelog = vehiclelog
 ######################################################
 
 if __name__ == "__main__":
-    # Display set-up
+    # "Display" set-up
     SCREEN_SIZE = (800,640)
-    #screen, bgcolor = pgrender.setup(SCREEN_SIZE, 'Obstacle steering test.')
+
     # Waypath constants
     UPDATE_SPEED = 0.35
     BORDER = 30
@@ -59,7 +55,6 @@ if __name__ == "__main__":
     VEH_RADIUS = 20
     OBS_RADIUS = 90
     EXP_K = .01
-    PATHS = True
 
     # Multiplier for number of test vehicles
     VNMUL = 2
@@ -93,15 +88,16 @@ if __name__ == "__main__":
 
     # Set up steering behaviours
     for veh in vehicles:
+        # All vehicles avoid the obstacle
         veh.navigator.set_steering('OBSTACLESKIM', obslist)
-        # Destination(s) on other side of the obstacle
-        gwaylist = [pt + SPACING*Point2d(0,vehicles.index(veh)) for pt in waylist]
-        # Uncomment next line to give all vehicles the same destination
-        gwaylist[1] = waylist[1]+Point2d(0,SPACING*(numveh//2))
 
+        # Each vehicle has the same desired path regradless of start location.
+        gwaylist = [pt + SPACING*Point2d(0,vehicles.index(veh)) for pt in waylist]
+        gwaylist[1] = waylist[1]+Point2d(0,SPACING*(numveh//2))
         gpath = WaypointPath(gwaylist, False)
         veh.navigator.set_steering('WAYPATHRESUME', gpath, EXP_K)
 
+        # Logging info for end plot
         veh.vehiclelog_init(OBS_POS)
         veh.active = True
 
@@ -127,9 +123,6 @@ if __name__ == "__main__":
 
         ticks = ticks + 1
 
-    ### Post simulation plotting
-    from matplotlib import pyplot as plt
-
     # Vehicle paths
     ax1 = plt.subplot(311)
 
@@ -139,7 +132,6 @@ if __name__ == "__main__":
     ax1.add_artist(waypt)
 
     # Maximum collision depth
-    from math import sqrt
     EXT_RAD = OBS_RADIUS + VEH_RADIUS
     max_clist = [max(EXT_RAD - sqrt(min(veh.dsqdata)), 0) for veh in vehicles]
     ax2 = plt.subplot(312)
@@ -147,6 +139,7 @@ if __name__ == "__main__":
     ax2.set_xlabel('Vehicle number')
     ax2.set_ylabel('Max. Collision Depth')
 
+    # Time to destination
     ax3 = plt.subplot(313)
     ax3.plot([veh.traveltime for veh in vehicles],'.')
     ax3.set_xlabel('Vehicle number')
@@ -155,4 +148,3 @@ if __name__ == "__main__":
     info = (numveh, VEH_RADIUS, OBS_RADIUS, EXP_K)
     ax1.set_title('Tanget line obstacle avoid\n%d vehicles, VehRad = %s, ObsRad = %s, WayPathReturn k = %s' % info)
     plt.show()
-
