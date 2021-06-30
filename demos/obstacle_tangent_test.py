@@ -3,7 +3,11 @@
 
 import sys
 from math import sqrt
-from matplotlib import pyplot as plt
+try:
+    from matplotlib import pyplot as plt
+except ImportError:
+    print("Please install matplotlib to run this demo.")
+    sys.exit()
 
 INF = float('inf')
 

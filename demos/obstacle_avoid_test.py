@@ -2,8 +2,11 @@
 """Waypath with obstacle interaction test. Matplotlib only."""
 
 import sys
-from matplotlib import pyplot as plt
-
+try:
+    from matplotlib import pyplot as plt
+except ImportError:
+    print("Please install matplotlib to run this demo.")
+    sys.exit()
 INF = float('inf')
 
 # Note: Adjust this depending on where this file ends up.
