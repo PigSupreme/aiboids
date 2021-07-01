@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Corridor/lane traversal using SIDESLIP."""
 
-import sys
-import pygame
+import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 
 INF = float('inf')
 SQRT2 = 1.4142135623730951
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d, BaseWall2d
 

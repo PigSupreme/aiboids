@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 """Improved Waypoint steering demo."""
 
-import sys, pygame
+import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
 
 INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d
 from aiboids.steering import WaypointPath
