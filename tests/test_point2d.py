@@ -83,7 +83,9 @@ class TestPoint2dVectorNorms(unittest.TestCase):
         elif isnan(x*x + y*y) or isinf(x*x + y*y):
             self.assertRaises(OverflowError)
         else:
-            self.assertEqual(vtest, vtest.norm()*vtest.unit())
+            vscaled = vtest.norm()*vtest.unit()
+            self.assertAlmostEqual(vtest.x, vscaled.x)
+            self.assertAlmostEqual(vtest.y, vscaled.y)
 
 class TestPoint2dVectorAlgebra(unittest.TestCase):
 
@@ -106,13 +108,17 @@ class TestPoint2dVectorAlgebra(unittest.TestCase):
 
     @given(*finite_floats(4))
     def test_cauchy_schwarz_inequality(self, a, b, c, d):
-        try:
+        if isnan(a*a + b*b) or isinf(a*a + b*b):
+            self.assertRaises(OverflowError)
+        elif isnan(c*c + d*d) or isinf(c*c + d*d):
+            self.assertRaises(OverflowError)
+        else:
             vtest = Point2d(a, b)
             wtest = Point2d(c, d)
-            self.assertLessEqual(abs(vtest*wtest), vtest.norm()*wtest.norm())
-        except OverflowError:
-            pass
-
+            if isnan(vtest*wtest) or isnan(vtest.norm()*wtest.norm()):
+                self.assertRaises(OverflowError)
+            else:
+                self.assertLessEqual(abs(vtest*wtest), vtest.norm()*wtest.norm())
 
 class TestPoint2dRotations(unittest.TestCase):
 
