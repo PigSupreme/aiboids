@@ -94,7 +94,7 @@ todo_include_todos = True
 
 # autodoc_default_opions
 autodoc_default_options = {
-        'members': True,
+        'members': None,
         'member_order': 'bysource'
         }
 
