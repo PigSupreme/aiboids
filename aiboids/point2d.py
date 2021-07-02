@@ -13,12 +13,6 @@ Todo:
     code for __mul__ (dot product) for an example of what we should be doing.
 """
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-from __future__ import division
-
 from math import sqrt, acos, cos, sin, isnan
 
 class Point2d(object):
@@ -141,7 +135,7 @@ class Point2d(object):
         Traceback (most recent call last):
         NotImplementedError: Compound assignment for dot product is not supported.
         """
-        
+
         try:
             result = (self.nt[0] * term.nt[0]) + (self.nt[1] * term.nt[1])
             if isnan(result):
@@ -320,7 +314,7 @@ class Point2d(object):
         Returns the scalar q such that self = q*u + r, where u is a unit
         vector (normalized direction) and r is orthogonal to u. This is
         algebraically identical to exact division (/). If you want the result
-        as a vector, use Point2d.proj(direction) or compund assignment.
+        as a vector, use Point2d.proj(direction) or compound assignment.
 
         Note:
             Compound assignment /= behaves differently; see below.
