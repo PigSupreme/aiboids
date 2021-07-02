@@ -2,6 +2,7 @@ base_entity.py
 ==============
 
 .. automodule:: base_entity
+   :members:
 
 Output from sample_run()
 ------------------------
