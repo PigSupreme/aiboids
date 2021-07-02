@@ -5,7 +5,7 @@ Game Entities
 -------------
 * MINER_BOB: Miner Bob, Elsa's husband
 * WIFE_ELSA: Wife Elsa, scourge of wandering goats
-* BILLY: The goat (not yet implemented)
+* BILLY: The goat (now a real GameEntity!)
 
 Locations
 ---------
@@ -20,6 +20,9 @@ Message Types
 -------------
 * MINER_HOME: Bob sends this when he comes home from digging.
 * STEW_READY: Elsa sends this when she's finished cooking.
+* GOAT_IN_YARD: Send this to Elsa when Billy enters the yard.
+* GOAT_SHOO: Elsa sends to Billy to attempt to shoo (extra=shoo_force)
+* GOAT_OUT: Reserved for future use.
 """
 
 from enum import Enum

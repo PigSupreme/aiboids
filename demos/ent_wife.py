@@ -74,7 +74,7 @@ def on_enter(agent):
 
 @DO_HOUSEWORK.event
 def on_execute(agent):
-    """"Occasionally sing while doing the housework...obviously."""
+    """Occasionally sing while doing the housework...obviously."""
     if randint(0, 2):
         print("%s : Workin' round the house...tra-la-lah-la-lah..." % agent.name)
 
