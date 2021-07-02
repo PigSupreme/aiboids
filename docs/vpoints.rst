@@ -5,4 +5,4 @@ Two-Dimensional Vectors (point2d.py)
 ------------------------------------
 
 .. automodule:: point2d
-   :no-special-members:
+   :special-members:

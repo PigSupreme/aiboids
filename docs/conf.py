@@ -94,8 +94,8 @@ todo_include_todos = True
 
 # autodoc_default_opions
 autodoc_default_options = {
-        'members': None,
-        'member_order': 'bysource'
+        'members': True,
+        'member-order': 'bysource'
         }
 
 # Skip these imports so that docs build successfully (for ReadTheDocs)
