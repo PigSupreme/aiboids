@@ -20,12 +20,13 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../aiboids'))
 sys.path.insert(0, os.path.abspath('../demos'))
+sys.path.insert(0, os.path.abspath('..'))
 
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
 #
-# needs_sphinx = '1.0'
+needs_sphinx = '1.8'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
@@ -84,12 +85,18 @@ pygments_style = 'sphinx'
 # If true, `todo` and `todoList` produce output, else they produce nothing.
 todo_include_todos = True
 
-# This automatically documents all members within a module, so that we don't
-# have to put :members: in every single time in the .rst file
-autodoc_default_flags = ['members']
+## This automatically documents all members within a module, so that we don't
+## have to put :members: in every single time in the .rst file
+#autodoc_default_flags = ['members']
+#
+## Keep doc order the same as source files
+#autodoc_member_order = 'bysource'
 
-# Keep doc order the same as source files
-autodoc_member_order = 'bysource'
+# autodoc_default_opions
+autodoc_default_options = {
+        'members': True,
+        'member_order': 'bysource'
+        }
 
 # Skip these imports so that docs build successfully (for ReadTheDocs)
 autodoc_mock_imports = ["pygame"]
