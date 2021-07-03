@@ -1,15 +1,16 @@
 Autonomous Steering Demos
 =========================
 
+.. toctree::
 
-.. automodule:: demos/avoid
+    .. automodule:: demos/avoid
 
-.. automodule:: demos/corridor
+    .. automodule:: demos/corridor
 
-.. automodule:: demos/lanechange
+    .. automodule:: demos/lanechange
 
-.. automodule:: demos/seek_arrive
+    .. automodule:: demos/seek_arrive
 
-.. automodule:: demos/sheep
+    .. automodule:: demos/sheep
 
-.. automodule:: demos/stalk
+    .. automodule:: demos/stalk
