@@ -1,18 +1,9 @@
 Autonomous Steering Demos
 =========================
 
-.. automodule:: ../demos/avoid.py
+.. automodule:: avoid
 
-.. automodule:: ../demos/corridor
+Game Data
+---------
 
-.. automodule:: ../demos/lanechange
-
-.. automodule:: ../demos/seek_arrive
-
-.. automodule:: ../demos/sheep
-
-.. automodule:: ../demos/stalk
-
-This is a goat
-
-.. literalinclude:: ../demos/avoid.py
+.. automodule:: gamedata
