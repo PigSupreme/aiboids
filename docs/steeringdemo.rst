@@ -3,7 +3,26 @@ Autonomous Steering Demos
 
 .. automodule:: avoid
 
-Game Data
----------
+----
 
-.. automodule:: gamedata
+.. automodule:: corridor
+
+----
+
+.. automodule:: lanechange
+
+----
+
+.. automodule:: seek_arrive
+
+----
+
+.. automodule:: sheep
+
+----
+
+.. automodule:: stalk
+
+----
+
+.. automodule:: waypoints
