@@ -2,7 +2,7 @@
 """
 waypoints.py: Improved Waypoint steering demo.
 
-Green: WAYPATHVISIT will SEEK towards directly each waypoint in turn, traversing
+Green: WAYPATHVISIT will SEEK directly towards each waypoint in turn, traversing
 the path once and ARRIVING at last waypoint (and stopping).
 
 Yellow: WAYPATHRESUME attempts to "stay on the path" between the last and next
