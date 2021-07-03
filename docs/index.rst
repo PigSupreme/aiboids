@@ -20,6 +20,8 @@ Contents
    
 Demos
 -----
+
+.. toctree::
    Autonomous Steering Behaviours <steeringdemo>
    Console-Based State Machine Demo (WestWorld 3) <demos/westworld3>
 
