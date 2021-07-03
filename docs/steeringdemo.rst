@@ -1,14 +1,15 @@
 Autonomous Steering Demos
 =========================
 
-.. automodule: demos/avoid
 
-.. automodule: demos/corridor
+.. automodule:: demos/avoid
 
-.. automodule: demos/lanechange
+.. automodule:: demos/corridor
 
-.. automodule: demos/seek_arrive
+.. automodule:: demos/lanechange
 
-.. automodule: demos/sheep
+.. automodule:: demos/seek_arrive
 
-.. automodule: demos/stalk
+.. automodule:: demos/sheep
+
+.. automodule:: demos/stalk
