@@ -3,6 +3,7 @@
 stalk.py: Improved TAKECOVER/STALKING steering demo.
 
 All boids avoid walls and obstacles. Additionally:
+
 * Green: Random WANDER only.
 * Yellow: TAKECOVER from Green (hide behind the most readily-available obstacle).
 * Purple: TAKECOVER from Green with stalking: sneak up behind, but hide if seen).
