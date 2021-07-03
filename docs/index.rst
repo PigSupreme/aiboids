@@ -13,12 +13,15 @@ Contents
 
 .. toctree::
    
-   intro
    Generic Vector Code <vpoints>
    Vehicles and Steering Behaviours <autonomous>
    Entities and Messaging <base_entity>
    Generic State Machine Code <statemachine>
-   demos/westworld3
+   
+Demos
+-----
+   Autonomous Steering Behaviours <steeringdemo>
+   Console-Based State Machine Demo (WestWorld 3) <demos/westworld3>
 
 
 ToDo List
