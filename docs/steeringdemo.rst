@@ -17,7 +17,7 @@ This is a goat
 
 .. toctree::
 
-    .. literalinclude:: ..demos/avoid.py
+    .. literalinclude:: ../demos/avoid.py
     Corridor
     Lanechange
     Seek_Arrive
