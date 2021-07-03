@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Corridor/lane traversal using WALLAVOID."""
+"""
+corridor.py: Corridor/lane traversal using WALLAVOID.
+
+The boid uses WALLAVOID with whiskers 90-degrees left/right to steer between inward-facing walls.
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN

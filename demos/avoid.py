@@ -1,5 +1,10 @@
-#!/usr/bin/env python
-"""OBSTACLEAVOID versus OBSTACLESKIM steering demo."""
+#!/usr/bin/env python3
+"""
+avoid.py: OBSTACLEAVOID versus OBSTACLESKIM steering demo.
+
+* Green Boid uses Reynolds-style OBSTACLEAVOID.
+* Yellow Boid steers so that its bounding circle is tangent to that of the obstacle.
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
