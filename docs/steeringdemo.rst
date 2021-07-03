@@ -1,6 +1,10 @@
 Autonomous Steering Demos
 =========================
 
+The live in /demos, but can be run from anywhere.
+
+----
+
 .. automodule:: avoid
 
 ----
