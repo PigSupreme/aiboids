@@ -3,14 +3,21 @@
 AiBoids Python
 ==============
 
+Reynolds-style BOIDS, Autonomous Steering Behaviours, and UML State Mahcines.
+
+GitHub: https://github.com/PigSupreme/aiboids
+
+
+Contents
+--------
+
 .. toctree::
-   :caption: Table of Contents:
    
    intro
    Generic Vector Code <vpoints>
+   Vehicles and Steering Behaviours <autonomous>
    Entities and Messaging <base_entity>
    Generic State Machine Code <statemachine>
-   Vehicles and Steering Behaviours <autonomous>
    demos/westworld3
 
 
