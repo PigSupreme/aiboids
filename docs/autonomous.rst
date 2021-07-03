@@ -1,10 +1,32 @@
-Autonomous Vehicles and Steering
-================================
+Autonomous Steering Demos
+=========================
 
-.. toctree::
+These live in /demos, but can be run from anywhere.
 
-   vehicle
-   steering
-   pgrender
-   steering_defaults
+----
 
+.. automodule:: avoid
+
+----
+
+.. automodule:: corridor
+
+----
+
+.. automodule:: lanechange
+
+----
+
+.. automodule:: seek_arrive
+
+----
+
+.. automodule:: sheep
+
+----
+
+.. automodule:: stalk
+
+----
+
+.. automodule:: waypoints
