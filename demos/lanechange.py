@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Corridor/lane traversal using SIDESLIP."""
+"""
+lanechange.py: Corridor/lane traversal using SIDESLIP.
+
+The boid uses SIDESLIP (essentially logistic growth between parallel paths) to control lane change.
+Walls are visual aids only; WALLAVOID isn't used here.
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN

@@ -7,8 +7,13 @@ import logging
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 
 import sched
-import sys
-sys.path.append('..')
+import os, sys
+
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from importlib import import_module
 from aiboids.base_entity import BaseEntity, DummyClock, PostOffice
 import aiboids.statemachine # TODO: Needed only to display state logic

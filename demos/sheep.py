@@ -1,5 +1,24 @@
-#!/usr/bin/env python
-"""AiBoids flocking demo wiyh pygame rendering."""
+#!/usr/bin/env python3
+"""
+sheep.py: Flocking demo with random wandering and obstacle avoidance.
+
+All boids use:
+
+* Random WANDER.
+* OBSTACLEAVOID.
+* WALLAVOID (walls on screen border with inward normals).
+
+Green "sheep":
+
+* Flocking (ALIGN, COHESION, and SEPARATION), peroidically active/inactive.
+* When flocking is active, lines indicate neighbors (other sheep only).
+* EVADE the yellow "sheepdog"
+
+Yellow "sheepdog":
+
+* Used SEPARATE and ALIGN (with all "sheep"), but no COHESION.
+* Somewhat convincing, but won't win any sheepdog trials.
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN

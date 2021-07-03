@@ -1,5 +1,13 @@
-#!/usr/bin/env python
-"""Improved TAKECOVER/STALKING steering demo."""
+#!/usr/bin/env python3
+"""
+stalk.py: Improved TAKECOVER/STALKING steering demo.
+
+All boids avoid walls and obstacles. Additionally:
+
+* Green: Random WANDER only.
+* Yellow: TAKECOVER from Green (hide behind the most readily-available obstacle).
+* Purple: TAKECOVER from Green with stalking: sneak up behind, but hide if seen).
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN

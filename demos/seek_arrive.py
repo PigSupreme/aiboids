@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
-"""SEEK and ARRIVE steering demo."""
+"""
+seek_arrive.py: SEEK and ARRIVE steering demo.
+
+* Green: Reynolds' SEEK. Notice how this overshoots the target point and creates jitter.
+* Yellow: Reynolds' ARRIVE with default hesitance (small).
+* Red: Reynolds' ARRIVE with larger hesitance.
+"""
 
 import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
