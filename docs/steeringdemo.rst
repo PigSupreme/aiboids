@@ -15,11 +15,4 @@ Autonomous Steering Demos
 
 This is a goat
 
-.. toctree::
-
-    .. literalinclude:: ../demos/avoid.py
-    Corridor
-    Lanechange
-    Seek_Arrive
-    Sheep
-    Stalk
+.. literalinclude:: ../demos/avoid.py
