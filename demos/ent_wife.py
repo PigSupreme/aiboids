@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """Wife Entity using simple FSM functionality"""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-
 import sys
 sys.path.append('..')
 
@@ -88,7 +83,7 @@ COOK_STEW = State('COOK_STEW')
 #
 #    State Transitions:
 #
-#    * on_msg STEW_READY --> EAT_STEW
+#    * on_msg STEW_READY --> EAT_STEW_WIFE
 #    """
 @COOK_STEW.event
 def on_enter(agent):
@@ -137,27 +132,27 @@ def on_msg(agent, message):
     """Listen for STEW_READY and notify my spouse.
 
     Messages:
-        * STEW_READY: change state --> EAT_STEW
+        * STEW_READY: change state --> EAT_STEW_WIFE
     """
     if message.MSG_TYPE == MsgTypes.STEW_READY:
         print("%s : Stew's ready, come an' git it!" % agent.name)
         agent.send_msg(agent.spouse_id, MsgTypes.STEW_READY)
         agent.stew_is_on = False
-        agent.statemachine.change_state(EAT_STEW)
+        agent.statemachine.change_state(EAT_STEW_WIFE)
         return True
 
     return False
 
 ### EAT_STEW State Logic #########################################
-EAT_STEW = State('EAT_STEW')
-@EAT_STEW.event
+EAT_STEW_WIFE = State('EAT_STEW_WIFE')
+@EAT_STEW_WIFE.event
 def on_enter(agent):
     """Make sure I'm actually at home."""
     if agent.location != Locations.SHACK:
         print("%s : Headin' to the dinner table..." % agent.name)
         agent.change_location(Locations.SHACK)
 
-@EAT_STEW.event
+@EAT_STEW_WIFE.event
 def on_execute(agent):
     """Quickly eat and then go back to housework.
 
