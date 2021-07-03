@@ -3,11 +3,6 @@
 This is the main exectuable for the westworld3 demo.
 """
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-
 import logging
 logging.basicConfig(format='%(message)s', level=logging.INFO)
 

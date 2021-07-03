@@ -1,11 +1,6 @@
 #!/usr/bin/env python
 """Miner Entity using simple FSM functionality."""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-
 import sys
 from random import randint
 
@@ -177,25 +172,25 @@ def on_msg(agent, message):
     """Wake up when dinner is ready.
 
     Messages:
-    * STEW_READY: If from my spouse, change state --> EAT_STEW
+    * STEW_READY: If from my spouse, change state --> EAT_STEW_MINER
     """
     if message.MSG_TYPE == MsgTypes.STEW_READY:
         if message.SEND_ID == agent.spouse_id and agent.location == Locations.SHACK:
             print("%s : I hears ya', lil' lady..." % agent.name)
-            agent.statemachine.change_state(EAT_STEW)
+            agent.statemachine.change_state(EAT_STEW_MINER)
             return True
     return False
 
-### EAT_STEW State Logic ##########################################
-EAT_STEW = State('EAT_STEW')
-@EAT_STEW.event
+### EAT_STEW_MINER State Logic ##########################################
+EAT_STEW_MINER = State('EAT_STEW_MINER')
+@EAT_STEW_MINER.event
 def on_enter(agent):
     """It doesn't matter where you get hungry, as long as you go home for dinner."""
     if agent.location != Locations.SHACK:
         print("%s : Better git home fer dinner..." % agent.name)
         agent.change_location(Locations.SHACK)
 
-@EAT_STEW.event
+@EAT_STEW_MINER.event
 def on_execute(agent):
     """Eat that tasty stew and recover some fatigue.
 
@@ -206,7 +201,7 @@ def on_execute(agent):
     agent.remove_fatigue(5)
     agent.statemachine.revert_state()
 
-@EAT_STEW.event
+@EAT_STEW_MINER.event
 def on_exit(agent):
     """Print after-dinner dialog."""
     print("%s : Now where was I...?" % agent.name)

@@ -1,316 +1,395 @@
-Wife Elsa : Spouse is MINER_BOB
-Wife Elsa : Housework ain't gonna do itself!
+[State info output moved elsewhere]
+
 Miner Bob : Spouse is WIFE_ELSA
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Spouse is MINER_BOB
+Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : I will eat the flowers of WIFE_ELSA
+=== Clock time is now 0 ===
+=== Clock time is now 1 ===
 Miner Bob : Found me a gold nugget! 
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 2 ===
+Miner Bob : Found me a gold nugget! 
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+=== Clock time is now 3 ===
 Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Now depositin' 3 gold...
-Miner Bob : Saved myself 3 gold...soon'll be rich!
+Billy the Goat : Baaaaah!
+=== Clock time is now 4 ===
+Miner Bob : Now depositin' 4 gold...
+Miner Bob : Saved myself 4 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Walkin' to the gold mine...
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 5 ===
+Miner Bob : Found me a gold nugget! 
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 6 ===
+Miner Bob : Keep on a-diggin'... 
+Wife Elsa : Mah flowers are safe fer now.
 Wife Elsa : Headin' on home...
 Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Found me two nuggets, whaddaya know! 
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+=== Clock time is now 7 ===
 Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Now depositin' 4 gold...
+=== Clock time is now 8 ===
+Miner Bob : Now depositin' 3 gold...
 Miner Bob : Saved myself 7 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Walkin' to the gold mine...
+=== Clock time is now 9 ===
 Miner Bob : Keep on a-diggin'... 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+=== Clock time is now 10 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 11 ===
 Miner Bob : Found me a gold nugget! 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Found me a gold nugget! 
-Miner Bob : Done diggin' fer now.
-Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Havin' a whiskey...mighty refreshin'!
-Miner Bob : Leavin' the saloon fer now...
-Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Thar's a goat in mah yard!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Found me a gold nugget! 
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom flowers*
+=== Clock time is now 12 ===
+Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 13 ===
 Miner Bob : Now depositin' 3 gold...
 Miner Bob : Saved myself 10 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Day's a finished, headin' on home!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
+Wife Elsa : Mah flowers are safe fer now.
 Wife Elsa : Headin' on home...
 Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Zzzzzz....
-Miner Bob : Zzzzzz....
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+=== Clock time is now 14 ===
 Miner Bob : Zzzzzz....
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Gonna rustle up some mighty fine stew!
+=== Clock time is now 15 ===
 Miner Bob : Zzzzzz....
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Wrassalin' with dinner...
+Billy the Goat : Baaaaah!
+=== Clock time is now 16 ===
 Miner Bob : Zzzzzz....
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Wife Elsa : Wrassalin' with dinner...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 17 ===
 Miner Bob : Zzzzzz....
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 18 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Heading back to the kitchen...
+Wife Elsa : Hope mah stew ain't burnt!
+Billy the Goat : Baaaaah!
+Wife Elsa : Stew's ready, come an' git it!
+Miner Bob : I hears ya', lil' lady...
+=== Clock time is now 19 ===
+Miner Bob : That's some might fine stew...thank ya much, Elsa!
+Miner Bob : Now where was I...?
+Wife Elsa : Eatin' the stew...I outdone myself this time.
 Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Zzzzzz....
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+=== Clock time is now 20 ===
 Miner Bob : Done restin' fer now, back to work!
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 21 ===
 Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 22 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Havin' a whiskey...mighty refreshin'!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 23 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+=== Clock time is now 24 ===
+Miner Bob : Keep on a-diggin'... 
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 25 ===
+Miner Bob : Keep on a-diggin'... 
+Billy the Goat : Baaaaah!
+=== Clock time is now 26 ===
 Miner Bob : Found me a gold nugget! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 27 ===
 Miner Bob : Now depositin' 3 gold...
 Miner Bob : Saved myself 13 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Walkin' to the gold mine...
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Found me a gold nugget! 
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 28 ===
+Miner Bob : Keep on a-diggin'... 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+=== Clock time is now 29 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Found me a gold nugget! 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Thar's a goat in mah yard!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 30 ===
+Miner Bob : Found me two nuggets, whaddaya know! 
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom flowers*
+=== Clock time is now 31 ===
+Miner Bob : Keep on a-diggin'... 
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom nom nom flowers*
+=== Clock time is now 32 ===
 Miner Bob : Found me a gold nugget! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom flowers*
+=== Clock time is now 33 ===
 Miner Bob : Now depositin' 3 gold...
 Miner Bob : Saved myself 16 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Walkin' to the gold mine...
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : *Nom flowers*
+=== Clock time is now 34 ===
 Miner Bob : Found me a gold nugget! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : *Scampers away*
+=== Clock time is now 35 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Found me a gold nugget! 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+=== Clock time is now 36 ===
 Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Keep on a-diggin'... 
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Found me a gold nugget! 
+Billy the Goat : Baaaaah!
+=== Clock time is now 37 ===
+Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 38 ===
 Miner Bob : Now depositin' 3 gold...
 Miner Bob : Saved myself 19 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Thar's a goat in mah yard!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom nom nom flowers*
+=== Clock time is now 39 ===
 Miner Bob : Keep on a-diggin'... 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 40 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+=== Clock time is now 41 ===
+Miner Bob : Found me a gold nugget! 
 Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
-Miner Bob : Found me a gold nugget! 
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Found me a gold nugget! 
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+=== Clock time is now 42 ===
+Miner Bob : Keep on a-diggin'... 
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 43 ===
+Miner Bob : Keep on a-diggin'... 
+Billy the Goat : Baaaaah!
+=== Clock time is now 44 ===
 Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : Now depositin' 4 gold...
-Miner Bob : Saved myself 23 gold...soon'll be rich!
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 45 ===
+Miner Bob : Now depositin' 3 gold...
+Miner Bob : Saved myself 22 gold...soon'll be rich!
 Miner Bob : Leavin' the bank...
 Miner Bob : Day's a finished, headin' on home!
-Wife Elsa : Gonna rustle up some mighty fine stew!
-Wife Elsa : Wrassalin' with dinner...
-Miner Bob : Zzzzzz....
-Wife Elsa : Wrassalin' with dinner...
-Miner Bob : Zzzzzz....
-Wife Elsa : Wrassalin' with dinner...
-Miner Bob : Zzzzzz....
-Wife Elsa : Wrassalin' with dinner...
-Miner Bob : Zzzzzz....
-Wife Elsa : Wrassalin' with dinner...
-Miner Bob : Zzzzzz....
-Wife Elsa : Stew's ready, come an' git it!
-Miner Bob : I hears ya', lil' lady...
-Wife Elsa : Eatin' the stew...I outdone myself this time.
-Wife Elsa : Housework ain't gonna do itself!
-Miner Bob : That's some might fine stew...thank ya much, Elsa!
-Miner Bob : Now where was I...?
-Wife Elsa : Thar's a goat in mah yard!
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 46 ===
 Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Zzzzzz....
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
+Wife Elsa : Mah flowers are safe fer now.
 Wife Elsa : Headin' on home...
 Wife Elsa : Housework ain't gonna do itself!
+Wife Elsa : Gonna rustle up some mighty fine stew!
+=== Clock time is now 47 ===
 Miner Bob : Zzzzzz....
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Wife Elsa : Wrassalin' with dinner...
+=== Clock time is now 48 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Wrassalin' with dinner...
+Billy the Goat : Baaaaah!
+=== Clock time is now 49 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Wrassalin' with dinner...
+Billy the Goat : Baaaaah!
+=== Clock time is now 50 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Wrassalin' with dinner...
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 51 ===
 Miner Bob : Zzzzzz....
 Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 52 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Heading back to the kitchen...
+Wife Elsa : Darnit, done burnt mah stew!
+Billy the Goat : Baaaaah!
+=== Clock time is now 53 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Better clean up this mess.
+Wife Elsa : Housework ain't gonna do itself!
+=== Clock time is now 54 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 55 ===
+Miner Bob : Zzzzzz....
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 56 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : *Scampers away*
+=== Clock time is now 57 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+=== Clock time is now 58 ===
+Miner Bob : Zzzzzz....
+Billy the Goat : Baaaaah!
+=== Clock time is now 59 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 60 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 61 ===
+Miner Bob : Zzzzzz....
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : *Scampers away*
+Billy the Goat : Baaaaah!
+=== Clock time is now 62 ===
 Miner Bob : Done restin' fer now, back to work!
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
-Miner Bob : Found me two nuggets, whaddaya know! 
-Miner Bob : Done diggin' fer now.
-Miner Bob : Headin' to the saloon fer a drink...
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
+Wife Elsa : Mah flowers are safe fer now.
 Wife Elsa : Headin' on home...
 Wife Elsa : Housework ain't gonna do itself!
+=== Clock time is now 63 ===
+Miner Bob : Found me a gold nugget! 
+Miner Bob : Done diggin' fer now.
+Miner Bob : Headin' to the saloon fer a drink...
+Billy the Goat : Baaaaah!
+=== Clock time is now 64 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 65 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
-Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : Baaaaah!
+Billy the Goat : *Nom nom flowers*
+=== Clock time is now 66 ===
+Miner Bob : Havin' a whiskey...mighty refreshin'!
+Wife Elsa : Shoo, ya silly goat!
+Billy the Goat : *Scampers away*
+=== Clock time is now 67 ===
 Miner Bob : Havin' a whiskey...mighty refreshin'!
 Miner Bob : Leavin' the saloon fer now...
 Miner Bob : Walkin' to the gold mine...
-Wife Elsa : Thar's a goat in mah yard!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Nom nom flowers*
+Wife Elsa : Mah flowers are safe fer now.
+Wife Elsa : Headin' on home...
+Wife Elsa : Housework ain't gonna do itself!
+Billy the Goat : Baaaaah!
+=== Clock time is now 68 ===
+Miner Bob : Found me a gold nugget! 
+Miner Bob : Done diggin' fer now.
+Miner Bob : Headin' to the saloon fer a drink...
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+=== Clock time is now 69 ===
+Miner Bob : Havin' a whiskey...mighty refreshin'!
+Miner Bob : Leavin' the saloon fer now...
+Miner Bob : Walkin' to the gold mine...
+Wife Elsa : Workin' round the house...tra-la-lah-la-lah...
+Billy the Goat : Baaaaah!
+=== Clock time is now 70 ===
 Miner Bob : Found me two nuggets, whaddaya know! 
 Miner Bob : Done diggin' fer now.
 Miner Bob : Headin' to bank, yessiree!
-Wife Elsa : Shoo, ya silly goat!
---FakeGoat-- : *Scampers away*
-Wife Elsa : Headin' on home...
-Wife Elsa : Housework ain't gonna do itself!
+Wife Elsa : Thar's a goat out in mah yard!
+=== Clock time is now 71 ===
 Miner Bob : Now depositin' 4 gold...
-Miner Bob : Saved myself 27 gold...soon'll be rich!
+Miner Bob : Saved myself 26 gold...soon'll be rich!
 Miner Bob : Whee, doggy! A winner is y'all!
-Elapsed time: 75 clock ticks.
+
+ === Final Results ===
+Elapsed time: 71 clock ticks.
+Miner Bob: Deposited 26 gold nuggets.
+Wife Elsa: Chased a goat 12 times.
+Billy the Goat: Ate 12 flowers.

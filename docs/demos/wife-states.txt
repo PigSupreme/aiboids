@@ -1,72 +1,58 @@
 Auto-generated from event docstrings.
 
-WIFE_GLOBAL.on_enter() docstring:
- Check that my spouse is in the game world.
+--- WIFE_GLOBAL defined events ---
+WIFE_GLOBAL: on_enter()
+    Check that my spouse is in the game world.
 
-WIFE_GLOBAL.on_execute() docstring:
- If I'm not in the YARD, 1 in 3 chance of a goat appearing.
+WIFE_GLOBAL : on_msg()
+    Listen for goats eating flowers and spouse coming home.
+
+--- DO_HOUSEWORK defined events ---
+DO_HOUSEWORK: on_enter()
+    Housework is done at the SHACK only; make sure I'm there.
+
+DO_HOUSEWORK: on_execute()
+    Occasionally sing while doing the housework...obviously.
+
+--- COOK_STEW defined events ---
+COOK_STEW: on_enter()
+    Go home and cook, if my spouse is still there.
+
+COOK_STEW: on_execute()
+    Keep an eye on the stew.
 
     StateChange:
-        Goat appears -> CHASE_GOAT
+        stew_is_ruined --> DO_HOUSEWORK
 
-    TODO: Once we have an actual Goat, move state change logic to a more
-    appropriate place (probably on_msg).
-    
 
-WIFE_GLOBAL.on_msg() docstring:
- If my spouse gets home, start cooking stew.
+COOK_STEW : on_msg()
+    Listen for STEW_READY and notify my spouse.
 
     Messages:
-        * MINER_HOME: If from my spouse, change state -> COOK_STEW
-    
+        * STEW_READY: change state --> EAT_STEW_WIFE
 
-DO_HOUSEWORK.on_enter() docstring:
- Housework is done at the SHACK only; make sure I'm there.
 
-DO_HOUSEWORK.on_execute() docstring:
- "...and sing while doing the housework, obviously.
+--- EAT_STEW_WIFE defined events ---
+EAT_STEW_WIFE: on_enter()
+    Make sure I'm actually at home.
 
-COOK_STEW.on_enter() docstring:
- Go home and start cooking, if my spouse is still there.
-
-COOK_STEW.on_execute() docstring:
- Keep an eye on the stew, if it's still cooking.
+EAT_STEW_WIFE: on_execute()
+    Quickly eat and then go back to housework.
 
     StateChange:
-        stew_is_on == False -> revert state
+        * After one update --> DO_HOUSEWORK
 
-    It's possible that Elsa got distracted somehow, and the stew was never
-    started. If this happens, just go back to the previous state.
-    
 
-COOK_STEW.on_msg() docstring:
- Listen for STEW_READY and notify my spouse.
+--- CHASE_GOAT defined events ---
+CHASE_GOAT: on_enter()
+    Stare down an incoming goat, or move to the YARD and shoo it!
 
-    Messages:
-        * STEW_READY: change state -> EAT_STEW
-    
-
-EAT_STEW.on_enter() docstring:
- Make sure I'm actually at home.
-
-EAT_STEW.on_execute() docstring:
- Eat and then go back to housework.
+CHASE_GOAT: on_execute()
+    Attempt to shoo the goat.
 
     StateChange:
-        * update(1) -> DO_HOUSEWORK
-    
+        Target goat no longer in yard --> revert state
 
-CHASE_GOAT.on_enter() docstring:
- If not already in the YARD, move there to chase that goat!
 
-CHASE_GOAT.on_execute() docstring:
- Attempt to shoo the goat.
-
-    StateChange:
-        Goat shooed -> revert state
-
-    TODO: There's no actual Goat; we just fake it with Elsa's code for now.
-    
-
-CHASE_GOAT.on_msg() docstring:
- Busy chasing the goat, so forward all messages to future self.
+CHASE_GOAT : on_msg()
+    Busy chasing the goat, so forward messages to future self if needed.

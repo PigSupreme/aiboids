@@ -1,0 +1,32 @@
+Auto-generated from event docstrings.
+
+--- GOAT_GLOBAL defined events ---
+GOAT_GLOBAL: on_enter()
+    Check that I have somebody's flowers to eat.
+
+GOAT_GLOBAL: on_execute()
+    Bleat every so often, because that's what goats do.
+
+--- WANDER_FIELDS defined events ---
+WANDER_FIELDS: on_enter()
+    If not in the FIELDS, go there and wander for a bit.
+
+WANDER_FIELDS: on_execute()
+    Wander aimlessly for some time.
+
+    StateChange:
+        Wander countdown complete --> EAT_FLOWERS
+
+
+--- EAT_FLOWERS defined events ---
+EAT_FLOWERS: on_enter()
+    If not in the YARD, go there and let Elsa know.
+
+EAT_FLOWERS: on_execute()
+    Eat flowers until we're shooed away.
+
+EAT_FLOWERS : on_msg()
+    Possibly be shooed by Elsa, but goats are stubborn.
+
+    Messages:
+        * GOAT_SHOO: If sufficient force, change state --> WANDER_FIELDS

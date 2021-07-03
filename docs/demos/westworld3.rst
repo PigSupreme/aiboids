@@ -28,6 +28,17 @@ Wife State Events
 
 .. include:: wife-states.txt
 
+
+Goat Class
+----------
+
+.. automodule:: ent_goat
+
+Goat State Events
+-----------------
+
+.. include:: goat-states.txt
+
 Sample Run
 ----------
 
