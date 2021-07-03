@@ -12,3 +12,14 @@ Autonomous Steering Demos
 .. automodule:: ../demos/sheep
 
 .. automodule:: ../demos/stalk
+
+This is a goat
+
+.. toctree::
+
+    .. literalinclude:: ..demos/avoid.py
+    Corridor
+    Lanechange
+    Seek_Arrive
+    Sheep
+    Stalk
