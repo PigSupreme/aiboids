@@ -1,7 +1,7 @@
 Autonomous Steering Demos
 =========================
 
-.. automodule:: ../demos/avoid>
+.. automodule:: ../demos/avoid
 
 .. automodule:: ../demos/corridor
 
