@@ -1,7 +1,7 @@
 Autonomous Steering Demos
 =========================
 
-These live in /demos, but can be run from anywhere.
+The live in /demos, but can be run from anywhere.
 
 ----
 

@@ -1,14 +1,30 @@
-#!/usr/bin/env python
-"""Improved Waypoint steering demo."""
+#!/usr/bin/env python3
+"""
+waypoints.py: Improved Waypoint steering demo.
 
-import sys, pygame
+Green: WAYPATHVISIT will SEEK directly towards each waypoint in turn, traversing
+the path once and ARRIVING at last waypoint (and stopping).
+
+Yellow: WAYPATHRESUME attempts to "stay on the path" between the last and next
+waypoint as much as possible. If an obstacle forces the boid off of the path, it
+will not directly SEEK the next waypoint, but stike a balance between returning
+to the path and making foward progress. Uses a cyclic path, repeating forever.
+
+Obstacles ensure that the boids will need to divert from the shortest path. All
+waypoints and obstacles are random.
+"""
+
+import pygame, sys, os
 from pygame.locals import QUIT, MOUSEBUTTONDOWN
 from random import randint
 
 INF = float('inf')
 
-# Note: Adjust this depending on where this file ends up.
-sys.path.append('..')
+# Allows running this demo from arbitrary location without installing the package
+mydir = os.path.dirname(os.path.realpath(__file__))
+mypar = os.path.abspath(os.path.join(mydir, os.pardir))
+sys.path.append(mypar)
+
 from aiboids.point2d import Point2d
 from aiboids.vehicle2d import SimpleVehicle2d
 from aiboids.steering import WaypointPath
@@ -70,7 +86,7 @@ if __name__ == "__main__":
         if d_min_sq > min_dist_sq:
             waylist.append(newp)
 
-    # Green (WAYPATHTRAVERSE; stops at final waypoint)
+    # Green (WAYPATHVISIT; stops at final waypoint)
     glist = waylist
     gpath = WaypointPath(2*[Point2d(*p) for p in glist], False)
     gpath.resume_at_nearest_from(green.pos)

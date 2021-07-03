@@ -1,11 +1,6 @@
 # -*- coding: utf-8 -*-
 """Goat Entity using simple FSM functionality"""
 
-# for python3 compat
-from __future__ import unicode_literals
-from __future__ import absolute_import
-from __future__ import print_function
-
 import sys
 sys.path.append('..')
 

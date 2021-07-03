@@ -1,78 +1,84 @@
 Auto-generated from event docstrings.
 
-MINER_GLOBAL.on_enter() docstring:
- Check that my spouse is in the game world.
+--- MINER_GLOBAL defined events ---
+MINER_GLOBAL: on_enter()
+    Check that my spouse is in the game world.
 
-MINER_GLOBAL.on_execute() docstring:
- Increases thirst, unless I'm at the SALOON.
+MINER_GLOBAL: on_execute()
+    Increases thirst, unless I'm at the SALOON.
 
-DIG_IN_MINE.on_enter() docstring:
- If not already in the mine, travel there.
+--- DIG_IN_MINE defined events ---
+DIG_IN_MINE: on_enter()
+    If not already in the mine, travel there.
 
-DIG_IN_MINE.on_execute() docstring:
- Increase fatigue and dig for gold.
-
-    StateChange:
-        * Pockets are Full -> DEPOSIT GOLD
-        * Thirsty -> DRINK_AT_SALOON
-    
-
-DIG_IN_MINE.on_exit() docstring:
- Print dialog for leaving the mine.
-
-DEPOSIT_GOLD.on_enter() docstring:
- If I'm not at the bank, travel there.
-
-DEPOSIT_GOLD.on_execute() docstring:
- Deposit all the gold being carried, and check for victory.
+DIG_IN_MINE: on_execute()
+    Increase fatigue and dig for gold.
 
     StateChange:
-    * If work_done (enough money in bank) -> REST_AT_HOME
-    * Otherwise -> DIG_IN_MINE
-    
+        * Pockets are Full --> DEPOSIT GOLD
+        * Thirsty --> DRINK_AT_SALOON
 
-DEPOSIT_GOLD.on_exit() docstring:
- Print dialog for leaving the bank.
 
-DRINK_AT_SALOON.on_enter() docstring:
- If not already at SALOON, go there.
+DIG_IN_MINE: on_exit()
+    Print dialog for leaving the mine.
 
-DRINK_AT_SALOON.on_execute() docstring:
- Drink until I've quenched my thirst.
+--- DEPOSIT_GOLD defined events ---
+DEPOSIT_GOLD: on_enter()
+    If I'm not at the bank, travel there.
 
-    StateChange:
-    * When no longer thirsty -> revert to previous
-    
-
-DRINK_AT_SALOON.on_exit() docstring:
- Print dialog for leaving the saloon.
-
-REST_AT_HOME.on_enter() docstring:
- If not at SHACK, go there. Tell my spouse I'm home.
-
-REST_AT_HOME.on_execute() docstring:
- Sleep until rested or woken for dinner.
+DEPOSIT_GOLD: on_execute()
+    Deposit all the gold being carried, and check for victory.
 
     StateChange:
-    * When fully rested -> DIG_IN_MINE
-    
+    * If work_done (enough money in bank) --> REST_AT_HOME
+    * Otherwise --> DIG_IN_MINE
 
-REST_AT_HOME.on_msg() docstring:
- Wake up when dinner is ready.
+
+DEPOSIT_GOLD: on_exit()
+    Print dialog for leaving the bank.
+
+--- DRINK_AT_SALOON defined events ---
+DRINK_AT_SALOON: on_enter()
+    If not already at SALOON, go there.
+
+DRINK_AT_SALOON: on_execute()
+    Drink until I've quenched my thirst.
+
+    StateChange:
+    * When no longer thirsty --> revert to previous
+
+
+DRINK_AT_SALOON: on_exit()
+    Print dialog for leaving the saloon.
+
+--- REST_AT_HOME defined events ---
+REST_AT_HOME: on_enter()
+    If not at SHACK, go there. Tell my spouse I'm home.
+
+REST_AT_HOME: on_execute()
+    Sleep until rested or woken for dinner.
+
+    StateChange:
+    * When fully rested --> DIG_IN_MINE
+
+
+REST_AT_HOME : on_msg()
+    Wake up when dinner is ready.
 
     Messages:
-    * STEW_READY: If from my spouse, change state -> EAT_STEW
-    
+    * STEW_READY: If from my spouse, change state --> EAT_STEW_MINER
 
-EAT_STEW.on_enter() docstring:
- It doesn't matter where you get hungry, as long as you go home for dinner.
 
-EAT_STEW.on_execute() docstring:
- Eat that tasty stew and recover some fatigue.
+--- EAT_STEW_MINER defined events ---
+EAT_STEW_MINER: on_enter()
+    It doesn't matter where you get hungry, as long as you go home for dinner.
+
+EAT_STEW_MINER: on_execute()
+    Eat that tasty stew and recover some fatigue.
 
     StateChange:
-        update(1) -> revert to previous
-    
+        update(1) --> revert to previous
 
-EAT_STEW.on_exit() docstring:
- Print after-dinner dialog.
+
+EAT_STEW_MINER: on_exit()
+    Print after-dinner dialog.

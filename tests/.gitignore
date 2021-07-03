@@ -1,0 +1,2 @@
+# Ignore auto-generate hypothesis testing artifacts
+.hypothesis

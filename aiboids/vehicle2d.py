@@ -219,7 +219,7 @@ class SimpleRigidBody2d(BasePointMass2d):
         maxtorque (float): Maximum magnitude of torque per update.
         spritedata (optional): Extra data for rendering; see module notes.
 
-    Notes:
+    Warning:
         Still experimental!
 
     """

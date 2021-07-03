@@ -46,8 +46,6 @@ respective function calls::
 ----
 """
 
-from __future__ import print_function
-
 class State(object):
     """Provides the necessary framework for UML states with trigger events.
 
